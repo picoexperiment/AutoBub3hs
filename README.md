@@ -5,8 +5,7 @@ git clone https://github.com/picoexperiment/AutoBub3hs.git
 
 Old way: build files are in the source directory
 
-cmake 
-make
+cmake; make
 
 Modified way: build files are in a separate build directory
 
