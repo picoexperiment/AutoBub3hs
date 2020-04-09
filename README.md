@@ -3,15 +3,12 @@ This is AutoBub version 3. It was written from scratch to work with ALL bubble c
 Installation:
 git clone https://github.com/picoexperiment/AutoBub3hs.git
 
-Old way:
+Old way: build files are in the source directory
 
-cmake
-
+cmake 
 make
 
-Modified way:
-
-"it is better to keep all build related files in a seaprate build directory outside of GitHub."
+Modified way: build files are in a separate build directory
 
 mkdir AutoBub3hs-builddir
 
@@ -19,14 +16,12 @@ cd AutoBub3hs-builddir
 
 AutoBub3hs-builddir$ cmake ../AutoBub3hs/
 
-***********
 Following files are created: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile. 
-Delete these files for a fresh build 
-***********
+Delete these files for a fresh build. 
 
 AutoBub3hs-builddir$ make
 
-generates executable file 'abub3hs'
+generates executable file 'abub3hs'.
 
 ./abub3hs <location of data> <run number> <output folder>
 
