@@ -22,6 +22,7 @@ AutoBub3hs-builddir$ make
 
 generates executable file 'abub3hs'.
 
+Usage: 
 ./abub3hs <location of data> <run number> <output folder>
 
 <location of data> and <output folder> MUST have trailing slashes!
