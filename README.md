@@ -20,8 +20,8 @@ cd AutoBub3hs-builddir
 AutoBub3hs-builddir$ cmake ../AutoBub3hs/
 
 ***********
-Following files are created: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile
-delete these files for a fresh build 
+Following files are created: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile. 
+Delete these files for a fresh build 
 ***********
 
 AutoBub3hs-builddir$ make
