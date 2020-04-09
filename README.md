@@ -10,16 +10,22 @@ cmake
 make
 
 Modified way:
+
 "it is better to keep all build related files in a seaprate build directory outside of GitHub."
+
 mkdir AutoBub3hs-builddir
+
 cd AutoBub3hs-builddir
+
 AutoBub3hs-builddir$ cmake ../AutoBub3hs/
 
 ***********
 Following files are created: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile
-** delete these files for a fresh build **
+delete these files for a fresh build 
+***********
 
 AutoBub3hs-builddir$ make
+
 generates executable file 'abub3hs'
 
 ./abub3hs <location of data> <run number> <output folder>
