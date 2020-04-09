@@ -1,20 +1,24 @@
 This is AutoBub version 3. It was written from scratch to work with ALL bubble chambers used by PICO. While I have tested this on 30l-16, more testing is needed to assess its performance for the other bubble chambers. LBP algorithm has been dropped temporarily in favour of the machine learning and simple profile thresholding which seems to be at par / better than just LBP or machine learning + LBP.
 
 Installation:
-# git clone https://github.com/picoexperiment/AutoBub3hs.git
+git clone https://github.com/picoexperiment/AutoBub3hs.git
 
-# old way
+Old way:
 cmake
 make
-# modified way
-# it is better to keep all build related files in a seaprate build directory outside of GitHub.
+
+Modified way:
+"it is better to keep all build related files in a seaprate build directory outside of GitHub."
 mkdir AutoBub3hs-builddir
 cd AutoBub3hs-builddir
 AutoBub3hs-builddir$ cmake ../AutoBub3hs/
-# creates following files: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile
-# delete these files for a fresh build
+
+***********
+Following files are created: CMakeCache.txt, CMakeFiles/, cmake_install.cmake, Makefile
+** delete these files for a fresh build **
+
 AutoBub3hs-builddir$ make
-# generates executable file 'abub3hs'
+generates executable file 'abub3hs'
 
 ./abub3hs <location of data> <run number> <output folder>
 
