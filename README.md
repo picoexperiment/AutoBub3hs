@@ -4,7 +4,9 @@ Installation:
 git clone https://github.com/picoexperiment/AutoBub3hs.git
 
 Old way:
+
 cmake
+
 make
 
 Modified way:
