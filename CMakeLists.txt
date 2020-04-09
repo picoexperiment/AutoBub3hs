@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH "cmake_modules")
 #MESSAGE( STATUS "Found : ${SQLITE3_LIBRARIES}" )
 
 
-SET(CMAKE_CXX_FLAGS "-std=gnu++1y -O2 -march=native -m64")
+SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O2 -march=native -m64")
 
 file(GLOB LBP_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/LBP/*.hpp)
 file(GLOB LBP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/LBP/*.cpp)
@@ -66,4 +66,3 @@ set(HEADERS
 add_executable( abub3hs AutoBubStart3.cpp )
 target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser AbubEntropySubsystem AbubUtility)
 #target_link_libraries( abub ${OpenCV_LIBS} ${SOURCE} ${HEADERS} )
-
