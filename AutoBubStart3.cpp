@@ -149,8 +149,8 @@ int main(int argc, char** argv)
         std::cout<<"Failed to read the images from the run. Autobub cannot continue.\n";
         PICO60Output->stageCameraOutputError(0,-5, -1);
         PICO60Output->stageCameraOutputError(1,-5, -1);
-        PICO60Output->stageCameraOutputError(2,-5, -1);
-        PICO60Output->stageCameraOutputError(3,-5, -1);
+        //PICO60Output->stageCameraOutputError(2,-5, -1); //cam2,3 not present in data now
+        //PICO60Output->stageCameraOutputError(3,-5, -1);
         PICO60Output->writeCameraOutput();
         return -5;
     }
@@ -167,23 +167,23 @@ int main(int argc, char** argv)
 
     Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
     Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
-    Trainer *TrainC2 = new Trainer(2, EventList, eventDir);
-    Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
+    //Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 not present in data now
+    //Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
 
 
 
     try {
         TrainC0->MakeAvgSigmaImage(false);
         TrainC1->MakeAvgSigmaImage(false);
-        TrainC2->MakeAvgSigmaImage(false);
-        TrainC3->MakeAvgSigmaImage(false);
+        //TrainC2->MakeAvgSigmaImage(false); //cam2,3 not present in data now
+        //TrainC3->MakeAvgSigmaImage(false);
 
     } catch (...) {
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
         PICO60Output->stageCameraOutputError(0,-7, -1);
         PICO60Output->stageCameraOutputError(1,-7, -1);
-        PICO60Output->stageCameraOutputError(2,-7, -1);
-        PICO60Output->stageCameraOutputError(3,-7, -1);
+        //PICO60Output->stageCameraOutputError(2,-7, -1); //cam 2,3 not present in data now
+        //PICO60Output->stageCameraOutputError(3,-7, -1);
         PICO60Output->writeCameraOutput();
         return -7;
     }
@@ -213,19 +213,19 @@ int main(int argc, char** argv)
          ********************************/
         AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0);
         AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1);
-        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2);
-        AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3);
+        //AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2); // cam2,3 absent in data now
+        //AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3);
 
 
         AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
         AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
-        AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2);
-        AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3);
+        //AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
+        //AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
         PICO60Output->writeCameraOutput();
 
-        delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3;
+        delete AnalyzerC0, AnalyzerC1;//, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
 
     }
 
@@ -234,8 +234,8 @@ int main(int argc, char** argv)
     /*GC*/
     delete TrainC0;
     delete TrainC1;
-    delete TrainC2;
-    delete TrainC3;
+    //delete TrainC2; //cam2,3 absent in data now
+    //delete TrainC3;
     delete PICO60Output;
 
 
