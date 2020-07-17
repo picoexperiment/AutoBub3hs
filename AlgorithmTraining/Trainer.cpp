@@ -197,14 +197,14 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
 
 
-        TestingForEntropyArray.clear();
+        TestingForEntropyArray.clear(); printf("\n");
 
         /*The for block loads images 0 and 1 from each event*/
 
         if (this->CameraFrames.size() >20 ){
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
-                if (getFilesize(thisEventLocation) > 1000000){
+                if (getFilesize(thisEventLocation) > 100000){ // it was 1000000=1MB, now 100kB=100000
                     tempImagingProcess = cv::imread(thisEventLocation, 0);
 
                     TestingForEntropyArray.push_back(tempImagingProcess);

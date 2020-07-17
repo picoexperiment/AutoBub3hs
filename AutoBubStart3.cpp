@@ -149,7 +149,7 @@ int main(int argc, char** argv)
         std::cout<<"Failed to read the images from the run. Autobub cannot continue.\n";
         PICO60Output->stageCameraOutputError(0,-5, -1);
         PICO60Output->stageCameraOutputError(1,-5, -1);
-        PICO60Output->stageCameraOutputError(2,-5, -1); //cam2,3 not present in data now
+        PICO60Output->stageCameraOutputError(2,-5, -1); //cam2,3 absent in data now
         PICO60Output->stageCameraOutputError(3,-5, -1);
         PICO60Output->writeCameraOutput();
         return -5;
@@ -167,7 +167,7 @@ int main(int argc, char** argv)
 
     Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
     Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
-    Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 not present in data now
+    Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
     Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
 
 
@@ -175,14 +175,14 @@ int main(int argc, char** argv)
     try {
         TrainC0->MakeAvgSigmaImage(false);
         TrainC1->MakeAvgSigmaImage(false);
-        TrainC2->MakeAvgSigmaImage(false); //cam2,3 not present in data now
+        TrainC2->MakeAvgSigmaImage(false); //cam2,3 absent in data now
         TrainC3->MakeAvgSigmaImage(false);
 
     } catch (...) {
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
         PICO60Output->stageCameraOutputError(0,-7, -1);
         PICO60Output->stageCameraOutputError(1,-7, -1);
-        PICO60Output->stageCameraOutputError(2,-7, -1); //cam 2,3 not present in data now
+        PICO60Output->stageCameraOutputError(2,-7, -1); //cam 2,3 absent in data now
         PICO60Output->stageCameraOutputError(3,-7, -1);
         PICO60Output->writeCameraOutput();
         return -7;
@@ -243,4 +243,3 @@ int main(int argc, char** argv)
     return 0;
 
 }
-
