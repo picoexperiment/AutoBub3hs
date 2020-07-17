@@ -197,7 +197,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
 
 
-        TestingForEntropyArray.clear(); printf("\n");
+        TestingForEntropyArray.clear(); 
 
         /*The for block loads images 0 and 1 from each event*/
 
