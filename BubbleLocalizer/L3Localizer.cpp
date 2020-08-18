@@ -616,7 +616,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     if (this->CameraFrames.size()<=20) this->okToProceed=false;
 
     for (int i=this->MatTrigFrame; i<=this->MatTrigFrame+6; i++){
-        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < 1000000) {
+        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < 900000) {
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -10;
             std::cout<<"Failed analyzing event at: "<<this->ImageDir<<this->CameraFrames[i]<<"\n";
