@@ -204,7 +204,7 @@ int main(int argc, char** argv)
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
 
-        printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), EventList.size()-1);
+        printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
 
 

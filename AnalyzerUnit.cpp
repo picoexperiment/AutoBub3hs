@@ -129,7 +129,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
-    if(getFilesize(refImg)<1000000){
+    if(getFilesize(refImg)<900000){
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
@@ -147,7 +147,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         std::string evalImg = this->ImageDir + this->CameraFrames[i];
 
         /*Check if image is malformed. If yes, then stop*/
-        if(getFilesize(evalImg)<1000000){
+        if(getFilesize(evalImg)<900000){
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
