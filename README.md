@@ -32,6 +32,7 @@ Usage:
 AutoBub3hs-builddir$ ./abub3hs <location of data> <run number> <output folder>
 ```
 
+Make sure to put the folder `cam_masks` into the same directory as the abub3hs executable (build directory)!
 `<location of data>` and `<output folder>` MUST have trailing slashes!
 
 Output:

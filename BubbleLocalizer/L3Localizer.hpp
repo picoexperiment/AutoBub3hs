@@ -13,7 +13,7 @@
 
 
 #ifndef ImageLocalization_Rough_HPP_INCLUDED
-#define ImageLocalization_Rough_INCLUDED
+#define ImageLocalization_Rough_HPP_INCLUDED
 
 
 /*Includes*/
@@ -81,7 +81,8 @@ class L3Localizer: public AnalyzerUnit{
         bool Level1SuspicionFlag;
 
         void LocalizeOMatic(std::string);
-
+        void isInMask(cv::Rect*);
+        
 
 
 };
