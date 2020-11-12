@@ -268,10 +268,8 @@ void L3Localizer::CalculateInitialBubbleParams(void )
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
             //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
-            //95% confident that this is where we should call this.
-            this->isInMask(&_thisBubbleFrame.newPosition);
-            if (!(this->okToProceed)) {
-                //if not, we continue and check next bubble
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
                 continue;
             }
 
@@ -366,10 +364,8 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
             //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
-            //95% confident that this is where we should call this.
-            this->isInMask(&_thisBubbleFrame.newPosition);
-            if (!(this->okToProceed)) {
-                //if not, we continue and check next bubble: either in same event or next one
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
                 continue;
             }
 
@@ -468,6 +464,12 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+
+            //Checking if the feature coordinates are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                continue;
+            }
 
             BubbleTrackingPerFrames.push_back(_thisBubbleFrame);
 
@@ -569,6 +571,12 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+            
+            //Checking if the coordinates of the feature are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                continue;
+            }
 
             BubbleTrackingPerFrames.push_back(_thisBubbleFrame);
 
@@ -657,12 +665,10 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     if (this->CameraNumber==2) {
         this->CalculateInitialBubbleParamsCam2();
         
-        //this is here to stop if the genesis coordinates 
-        if (!this->okToProceed) return;
 
         if (this->MatTrigFrame<29){
             for (int k=1; k<=NumFramesBubbleTrack; k++)
-            this->CalculatePostTriggerFrameParamsCam2(k);
+            this->CalculatePostTriggerFrameParamsCam2(k); //############################################################
         } else {
             for (int k=1; k<=(39-this->MatTrigFrame); k++)
             this->CalculatePostTriggerFrameParamsCam2(k);
@@ -674,12 +680,11 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
         //this->CalculatePostTriggerFrameParamsCam2(3);
     } else {
         this->CalculateInitialBubbleParams();
-        if (!this->okToProceed) return;
         
 
         if (this->MatTrigFrame<29){
             for (int k=1; k<=NumFramesBubbleTrack; k++)
-            this->CalculatePostTriggerFrameParams(k);
+            this->CalculatePostTriggerFrameParams(k); //###############################################################
         } else {
             for (int k=1; k<=(39-this->MatTrigFrame); k++)
             this->CalculatePostTriggerFrameParams(k);
@@ -703,9 +708,8 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 }
 
 //filtering out genesis locations that occur out of acceptable area according to masks in external folder.
-void L3Localizer::isInMask( cv::Rect *genesis_coords )
+bool L3Localizer::isInMask( cv::Rect *genesis_coords )
 {
-    //these are subject to
 
     int xpix = genesis_coords->x;
     int ypix = genesis_coords->y;
@@ -718,16 +722,16 @@ void L3Localizer::isInMask( cv::Rect *genesis_coords )
     //c::mat.at() takes in (y,x) NOT (x,y). Why? It is a matrix, hence we have: row,col (y,x).
     if ((int)mask_image.at<uchar>(ypix,xpix) > 0 ) {
 
-        return;
+        return true; //It is within the acceptable range
 
     } else {
 
-        this->okToProceed = false;
-        this->TriggerFrameIdentificationStatus = -11; //this errorcode currently doesn't work due to how error staging works in AutoBubstart3.cpp. It changes to -8.
-        std::cout << "\nCaught an event at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n\n";
-        return;
-        
+        std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
+        return false; //It lies outside of the acceptable range
     }
 
 
 }
+
+
+

@@ -81,8 +81,7 @@ class L3Localizer: public AnalyzerUnit{
         bool Level1SuspicionFlag;
 
         void LocalizeOMatic(std::string);
-        void isInMask(cv::Rect*);
-        
+        bool isInMask(cv::Rect*);
 
 
 };
