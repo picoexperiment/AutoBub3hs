@@ -653,10 +653,10 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 
     if (!this->okToProceed) return;
     /*Assign the three useful frames*/
-    if (this->CameraNumber==2) this->MatTrigFrame+=1;
+//    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
 
-    this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1],0);
+    this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
     this->presentationFrame = triggerFrame.clone();
     //cv::cvtColor(this->presentationFrame, this->presentationFrame, cv::COLOR_GRAY2BGR);
     this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
