@@ -517,7 +517,7 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
     //cv::Mat tempPresentation;
 
     /*Load the post trig frame*/
-    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber],0);
     //tempPresentation =  this->PostTrigWorkingFrame.clone();
     //cv::cvtColor(tempPresentation, tempPresentation, cv::COLOR_GRAY2BGR);
 
@@ -662,36 +662,15 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
 
     /*Run the analyzer series*/
-    if (this->CameraNumber==2) {
-        this->CalculateInitialBubbleParamsCam2();
-        
+    this->CalculateInitialBubbleParams();
+    
 
-        if (this->MatTrigFrame<29){
-            for (int k=1; k<=NumFramesBubbleTrack; k++)
-            this->CalculatePostTriggerFrameParamsCam2(k); //############################################################
-        } else {
-            for (int k=1; k<=(39-this->MatTrigFrame); k++)
-            this->CalculatePostTriggerFrameParamsCam2(k);
-
-        }
-
-
-        //this->CalculatePostTriggerFrameParamsCam2(2);
-        //this->CalculatePostTriggerFrameParamsCam2(3);
+    if (this->MatTrigFrame<29){
+        for (int k=1; k<=NumFramesBubbleTrack; k++)
+        this->CalculatePostTriggerFrameParams(k); //##############################################################
     } else {
-        this->CalculateInitialBubbleParams();
-        
-
-        if (this->MatTrigFrame<29){
-            for (int k=1; k<=NumFramesBubbleTrack; k++)
-            this->CalculatePostTriggerFrameParams(k); //###############################################################
-        } else {
-            for (int k=1; k<=(39-this->MatTrigFrame); k++)
-            this->CalculatePostTriggerFrameParams(k);
-
-        }
-        //this->CalculatePostTriggerFrameParams(2);
-        //this->CalculatePostTriggerFrameParams(3);
+        for (int k=1; k<=(39-this->MatTrigFrame); k++)
+        this->CalculatePostTriggerFrameParams(k);
     }
 
 
