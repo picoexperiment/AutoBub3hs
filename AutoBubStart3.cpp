@@ -36,6 +36,7 @@
 #include "bubble/bubble.hpp"
 #include "common/UtilityFunctions.hpp"
 
+#include <omp.h>
 
 const int evalEntropyThresholdFrames = 2;
 std::vector<int> badEvents;
@@ -164,12 +165,10 @@ int main(int argc, char** argv)
      *Train on a given set of images for background subtract
      */
     printf("**Starting training. AutoBub is in learn mode**\n");
-
     Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
     Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
     Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
     Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
-
 
 
     try {
@@ -189,17 +188,19 @@ int main(int argc, char** argv)
     }
 
 
-
     printf("***Training complete. AutoBub is now in detect mode***\n");
+    // Create a separate writer per event
+    //delete PICO60Output;
 
 
     /*Detect mode
      *Iterate through all the events in the list and detect bubbles in them one by one
      *A seprate procedure will store them to a file at the end
      */
-
+//    #pragma omp parallel for ordered schedule(static, 1)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
+        //OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
@@ -223,10 +224,13 @@ int main(int argc, char** argv)
         AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-        PICO60Output->writeCameraOutput();
+//        #pragma omp ordered
+//        {
+            PICO60Output->writeCameraOutput();
+//        }
+        //delete PICO60Output;
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
-
     }
 
     printf("run complete.\n");
@@ -236,7 +240,7 @@ int main(int argc, char** argv)
     delete TrainC1;
     delete TrainC2; //cam2,3 absent in data now
     delete TrainC3;
-    delete PICO60Output;
+    delete PICO60Output; //uncomment this if there is a single writer
 
 
     printf("AutoBub done analyzing this run. Thank you.\n");
