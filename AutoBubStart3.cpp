@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 
     printf("***Training complete. AutoBub is now in detect mode***\n");
     // Create a separate writer per event
-    delete PICO60Output;
+    //delete PICO60Output;
 
 
     /*Detect mode
@@ -200,7 +200,7 @@ int main(int argc, char** argv)
 //    #pragma omp parallel for ordered schedule(static, 1)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
-        OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+        //OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
 //        {
             PICO60Output->writeCameraOutput();
 //        }
-        delete PICO60Output;
+        //delete PICO60Output;
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
     }
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
     delete TrainC1;
     delete TrainC2; //cam2,3 absent in data now
     delete TrainC3;
-    //delete PICO60Output; uncomment this if there is a single writer
+    delete PICO60Output; //uncomment this if there is a single writer
 
 
     printf("AutoBub done analyzing this run. Thank you.\n");
