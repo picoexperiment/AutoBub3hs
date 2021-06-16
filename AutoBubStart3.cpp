@@ -165,7 +165,6 @@ int main(int argc, char** argv)
      *Train on a given set of images for background subtract
      */
     printf("**Starting training. AutoBub is in learn mode**\n");
-
     Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
     Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
     Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
@@ -189,7 +188,6 @@ int main(int argc, char** argv)
     }
 
 
-
     printf("***Training complete. AutoBub is now in detect mode***\n");
     // Create a separate writer per event
     delete PICO60Output;
@@ -199,7 +197,7 @@ int main(int argc, char** argv)
      *Iterate through all the events in the list and detect bubbles in them one by one
      *A seprate procedure will store them to a file at the end
      */
-    #pragma omp parallel for ordered schedule(static, 1)
+//    #pragma omp parallel for ordered schedule(static, 1)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
         OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
@@ -226,14 +224,13 @@ int main(int argc, char** argv)
         AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-        #pragma omp ordered
-        {
+//        #pragma omp ordered
+//        {
             PICO60Output->writeCameraOutput();
-        }
+//        }
         delete PICO60Output;
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
-
     }
 
     printf("run complete.\n");
