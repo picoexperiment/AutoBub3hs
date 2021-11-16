@@ -16,10 +16,11 @@
 
 
 
-AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData)
+AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->ImageDir=ImageDir;
+    this->MaskDir=MaskDir;
     this->CameraNumber=CameraNumber;
     this->EventID=EventID;
 
@@ -140,8 +141,8 @@ void AnalyzerUnit::FindTriggerFrame(void ){
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
 
-    //for (int i = 1; i < this->CameraFrames.size(); i++) {
-    for (int i = 1; i < 30; i++) {
+    for (int i = 1; i < this->CameraFrames.size(); i++) {
+//    for (int i = 1; i < 30; i++) {
 
         /*The name and load to memory evalImage*/
         std::string evalImg = this->ImageDir + this->CameraFrames[i];

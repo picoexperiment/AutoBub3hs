@@ -46,7 +46,7 @@
  * ******************************************************************************/
 
 
-L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData)
+L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir)
 {
 
 
@@ -697,7 +697,10 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
     int xpix = genesis_coords->x;
     int ypix = genesis_coords->y;
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
-    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
+    std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
+    std::cout << std::endl << path << std::endl;
+    cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
+//    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
 
     /*the cam masks we currently have are grayscale bitmaps meaning we either have a 255 or 0 pixel value. (it's one bit but for some reason it is 255)
     If we land in the black (out of bounds) zone, ie. 0, we are out of bounds.*/

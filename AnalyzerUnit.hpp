@@ -27,6 +27,7 @@ class AnalyzerUnit{
         /*Event identification and location*/
         std::string ImageDir;
         std::string EventID;
+        std::string MaskDir;
 
         /*List of all the frames belonging to the particular event in question*/
         std::vector<std::string> CameraFrames;
@@ -37,7 +38,7 @@ class AnalyzerUnit{
 
     public:
         /*Constructor and deconstructor*/
-        AnalyzerUnit(std::string, std::string, int, Trainer** );
+        AnalyzerUnit(std::string, std::string, int, Trainer**, std::string );
         ~AnalyzerUnit(void );
 
         /*Function to parse and sort the triggers from the folder and the directory where the images are stored*/

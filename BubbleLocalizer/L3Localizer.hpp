@@ -65,7 +65,7 @@ class L3Localizer: public AnalyzerUnit{
 
     public:
         /*Constructor and deconstructor*/
-        L3Localizer(std::string, std::string, int, bool nonStopPref, Trainer** );
+        L3Localizer(std::string, std::string, int, bool nonStopPref, Trainer**, std::string );
         ~L3Localizer();
 
         /*Public functions exposing the interface*/

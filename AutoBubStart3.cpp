@@ -127,6 +127,7 @@ int main(int argc, char** argv)
     std::string dataLoc = argv[1];
     std::string run_number = argv[2];
     std::string out_dir = argv[3];
+    std::string mask_dir = argv[4];
 
     std::string eventDir=dataLoc+run_number+"/";
 
@@ -170,6 +171,8 @@ int main(int argc, char** argv)
     Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
     Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
 
+    //Trainer* trainers [4] = {TrainC0, TrainC1, TrainC2, TrainC3};
+
 
     try {
         TrainC0->MakeAvgSigmaImage(false);
@@ -179,11 +182,14 @@ int main(int argc, char** argv)
 
     } catch (...) {
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
-        PICO60Output->stageCameraOutputError(0,-7, -1);
-        PICO60Output->stageCameraOutputError(1,-7, -1);
-        PICO60Output->stageCameraOutputError(2,-7, -1); //cam 2,3 absent in data now
-        PICO60Output->stageCameraOutputError(3,-7, -1);
-        PICO60Output->writeCameraOutput();
+        for (int evi=0; evi<EventList.size(); evi++){
+            int actualEventNumber = atoi(EventList[evi].c_str());
+            PICO60Output->stageCameraOutputError(0,-7, actualEventNumber);
+            PICO60Output->stageCameraOutputError(1,-7, actualEventNumber);
+            PICO60Output->stageCameraOutputError(2,-7, actualEventNumber); //cam 2,3 absent in data now
+            PICO60Output->stageCameraOutputError(3,-7, actualEventNumber);
+            PICO60Output->writeCameraOutput();
+        }
         return -7;
     }
 
@@ -212,11 +218,11 @@ int main(int argc, char** argv)
         /* ***************************
          * ***** Camera Operations ******
          ********************************/
-        AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0);
-        AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1);
-        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2); // cam2,3 absent in data now
-        AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3);
-
+        //#pragma omp ordered
+        AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0, mask_dir);
+        AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1, mask_dir);
+        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir); // cam2,3 absent in data now
+        AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3, mask_dir);
 
         AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
         AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
@@ -224,11 +230,8 @@ int main(int argc, char** argv)
         AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-//        #pragma omp ordered
-//        {
-            PICO60Output->writeCameraOutput();
-//        }
-        //delete PICO60Output;
+        
+        PICO60Output->writeCameraOutput();
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
     }
