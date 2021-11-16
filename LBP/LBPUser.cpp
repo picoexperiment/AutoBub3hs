@@ -19,7 +19,7 @@ cv::Mat lbpImage(cv::Mat& frame){
     int lbp_operator=2;
 
     //dst=frame;
-    cv::cvtColor(frame, dst, CV_BGR2GRAY);
+    cv::cvtColor(frame, dst, cv::COLOR_BGR2GRAY);
 
     //Uncomment the next line to use smoothing
     //GaussianBlur(dst, dst, Size(7,7), 5, 3, BORDER_CONSTANT);

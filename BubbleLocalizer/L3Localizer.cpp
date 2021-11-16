@@ -230,8 +230,8 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
 
-    cv::threshold(overTheSigma, overTheSigma, 3, 255, CV_THRESH_TOZERO);
-    cv::threshold(overTheSigma, overTheSigma, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, overTheSigma, 3, 255, cv::THRESH_TOZERO);
+    cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
     /*Debug*/
     if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
@@ -241,7 +241,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -318,13 +318,13 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
     /*Shadow removal using blurring and intensity*/
     cv::Mat bubMinusShadow;
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, CV_THRESH_TOZERO|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, cv::THRESH_TOZERO|cv::THRESH_OTSU);
 
 
     //debugShow(bubMinusShadow);
 
     /*Get rid of pixel noise*/
-    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, CV_THRESH_TOZERO);
+    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, cv::THRESH_TOZERO);
 
     //debugShow(bubMinusShadow);
     /*Check if this is a trigger by the interface moving or not - Note: Works ONLY on cam 2's entropy settings*/
@@ -335,7 +335,7 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(bubMinusShadow, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(bubMinusShadow, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -414,13 +414,13 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
     /*Shadow removal using blurring and intensity*/
     cv::Mat bubMinusShadow;
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, CV_THRESH_TOZERO|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, cv::THRESH_TOZERO|cv::THRESH_OTSU);
 
 
 
 
     /*Get rid of pixel noise*/
-    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, CV_THRESH_TOZERO);
+    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, cv::THRESH_TOZERO);
 
     /*Check if this is a trigger by the interface moving or not - Note: Works ONLY on cam 2's entropy settings*/
     //showHistogramImage(bubMinusShadow);
@@ -430,7 +430,7 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(bubMinusShadow, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(bubMinusShadow, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -533,14 +533,14 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
 
     /*Blur and threshold to remove pixel noise*/
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, overTheSigma, 3, 255, CV_THRESH_TOZERO);
-    cv::threshold(overTheSigma, overTheSigma, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, overTheSigma, 3, 255, cv::THRESH_TOZERO);
+    cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
 
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -639,6 +639,10 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     if (this->CameraFrames.size()<=20) this->okToProceed=false;
 
     for (int i=this->MatTrigFrame; i<=this->MatTrigFrame+6; i++){
+        if (i >= this->CameraFrames.size()){
+            this->okToProceed=false;
+            break;
+        }
         if (getFilesize(this->ImageDir + this->CameraFrames[i]) < 900000) {
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -10;
