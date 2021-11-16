@@ -698,7 +698,6 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
     int ypix = genesis_coords->y;
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
     std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
-    std::cout << std::endl << path << std::endl;
     cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
 //    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
 
