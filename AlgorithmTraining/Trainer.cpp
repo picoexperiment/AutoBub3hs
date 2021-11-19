@@ -8,13 +8,14 @@
 #include <opencv2/opencv.hpp>
 #include "Trainer.hpp"
 #include "../LBP/LBPUser.hpp"
-#include "../ImageEntropyMethods/ImageEntropyMethods.hpp"
+//#include "../ImageEntropyMethods/ImageEntropyMethods.hpp"
 #include "../common/UtilityFunctions.hpp"
 
 
 //#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
 //#include "LBP/LBPUser.hpp"
 
+#define debug false
 
 
 
@@ -26,6 +27,28 @@ Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string Ev
     this->EventDir = EventDir;
 
 
+}
+
+Trainer::Trainer(const Trainer &other_trainer){
+    this->camera = other_trainer.camera;
+    this->EventList = std::vector<std::string>(other_trainer.EventList);
+    this->EventDir = std::string(other_trainer.EventDir);
+
+    this->TrainedAvgImage = cv::Mat::zeros(other_trainer.TrainedAvgImage.rows, other_trainer.TrainedAvgImage.cols, other_trainer.TrainedAvgImage.type());
+    other_trainer.TrainedAvgImage.copyTo(this->TrainedAvgImage);
+
+    this->TrainedSigmaImage = cv::Mat::zeros(other_trainer.TrainedSigmaImage.rows, other_trainer.TrainedSigmaImage.cols, other_trainer.TrainedSigmaImage.type());
+    other_trainer.TrainedSigmaImage.copyTo(this->TrainedSigmaImage);
+
+
+    this->TrainedLBPAvg = cv::Mat::zeros(other_trainer.TrainedLBPAvg.rows, other_trainer.TrainedLBPAvg.cols, other_trainer.TrainedLBPAvg.type());
+    other_trainer.TrainedLBPAvg.copyTo(this->TrainedLBPAvg);
+
+
+    this->TrainedLBPSigma = cv::Mat::zeros(other_trainer.TrainedLBPSigma.rows, other_trainer.TrainedLBPSigma.cols, other_trainer.TrainedLBPSigma.type());
+    other_trainer.TrainedLBPSigma.copyTo(this->TrainedLBPSigma);
+
+    this->isLBPApplied = other_trainer.isLBPApplied;
 }
 
 Trainer::~Trainer(void ) {}
@@ -224,7 +247,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
         /*Test entropy for the first 2 trained sets*/
         if (isThisAGoodEvent){
             tempTestingEntropy = TestingForEntropyArray[1]-TestingForEntropyArray[0];
-            singleEntropyTest = calculateEntropyFrame(tempTestingEntropy);
+            singleEntropyTest = this->calculateEntropyFrame(tempTestingEntropy);
             //std::cout<<ThisEventDir<<ImageFilePattern<<" "<<singleEntropyTest<<"\n";
         } else {
             singleEntropyTest = 0.0000;
@@ -259,6 +282,10 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
     /*Calculate mean and sigma of the raw images*/
     advance_cursor();
     this->CalculateMeanSigmaImageVector(backgroundImagingArray, this->TrainedAvgImage, this->TrainedSigmaImage);
+    if (debug){
+        cv::imwrite("DebugPeek/AvgImage_cam" + std::to_string(this->camera) + ".png", this->TrainedAvgImage);
+        cv::imwrite("DebugPeek/SigmaImage_cam" + std::to_string(this->camera) + ".png", this->TrainedSigmaImage);
+    }
 
     /*Calculate mean and sigma of LBP*/
     advance_cursor();
@@ -270,6 +297,52 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
     printf("complete.\n");
 
 }
+
+
+/*This function calculates ImageEntropy
+based on CPU routines. It converts the image to
+BW first. This is assumed that the image frames are
+subtracted already 
+2021 11 19 - Colin M
+    Moved here for implicit thread safety.
+*/
+float Trainer::calculateEntropyFrame(cv::Mat& ImageFrame){
+
+    /*Memory for the image greyscale and histogram*/
+    cv::Mat image_greyscale, img_histogram;
+
+    /*Histogram sizes and bins*/
+    const int histSize[] = {16};
+    float range[] = { 0, 256 };
+    const float* histRange[] = { range };
+
+
+
+    float ImgEntropy=0.0;
+    /*Check if image is BW or colour*/
+    if (ImageFrame.channels() > 1){
+        /*Convert to BW*/
+        cv::cvtColor(ImageFrame, image_greyscale, cv::COLOR_BGR2GRAY);
+    } else {
+        /*The = operator assigns pointers so no memory is wasted*/
+        image_greyscale = ImageFrame;
+    }
+
+
+    /*Calculate Histogram*/
+    cv::calcHist(&image_greyscale, 1, 0,        cv::Mat(), img_histogram, 1, histSize, histRange, true, false);
+    /*Normalize Hist*/
+    img_histogram = img_histogram/(ImageFrame.rows*ImageFrame.cols);
+    /*Calculate Entropy*/
+    for (int i=0; i<img_histogram.rows; i++){
+            float binEntry = img_histogram.at<float>(i, 0);
+            if (binEntry !=0)
+                ImgEntropy -= binEntry * log2(binEntry);
+    }
+
+    return ImgEntropy;
+}
+
 
 /*Misc functions*/
 

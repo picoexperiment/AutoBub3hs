@@ -12,6 +12,8 @@ class Trainer{
     private:
         void ParseAndSortFramesInFolder(std::string, std::string );
 
+        float calculateEntropyFrame(cv::Mat& );
+
         std::vector<std::string> CameraFrames;
 
 
@@ -41,6 +43,7 @@ class Trainer{
 
         /*Trainer instance initilized with the camera number*/
         Trainer(int,  std::vector<std::string>, std::string  );
+        Trainer(const Trainer &other_trainer);
         ~Trainer(void );
 
         /*Compute the mean and std*/

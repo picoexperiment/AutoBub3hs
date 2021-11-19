@@ -84,7 +84,10 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
         {
 
             AnalyzerCGeneric->LocalizeOMatic(out_dir);  //uncomment for full run
-            if (AnalyzerCGeneric->okToProceed) Pico60Writer->stageCameraOutput(AnalyzerCGeneric->BubbleList, camera, AnalyzerCGeneric->MatTrigFrame, actualEventNumber);
+            if (AnalyzerCGeneric->okToProceed) {
+                #pragma omp critical
+                Pico60Writer->stageCameraOutput(AnalyzerCGeneric->BubbleList, camera, AnalyzerCGeneric->MatTrigFrame, actualEventNumber);
+            }
             else {
                 Pico60Writer->stageCameraOutputError(camera,-8, actualEventNumber);
                 }
@@ -104,7 +107,6 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
     }
 
     //delete AnalyzerCGeneric;
-
     advance_cursor(); /*Fancy coursors!*/
     return 0;
 
@@ -223,14 +225,28 @@ int main(int argc, char** argv)
         AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1, mask_dir);
         AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir); // cam2,3 absent in data now
         AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3, mask_dir);
-
-        AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
-        AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
-        AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
-        AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
+        #pragma omp parallel
+        {
+            #pragma omp single nowait
+            {
+                AnyCamAnalysis(EventList[evi], imageDir, 0, false, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
+            }
+            #pragma omp single nowait
+            {
+                AnyCamAnalysis(EventList[evi], imageDir, 1, false, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
+            }
+            #pragma omp single nowait
+            {
+                AnyCamAnalysis(EventList[evi], imageDir, 2, false, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
+            }
+            #pragma omp single nowait
+            {
+                AnyCamAnalysis(EventList[evi], imageDir, 3, false, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
+            }
+        }
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-        
+        #pragma omp barrier
         PICO60Output->writeCameraOutput();
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now

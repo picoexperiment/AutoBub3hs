@@ -22,6 +22,7 @@ class AnalyzerUnit{
         int minEvalFrameNumber = 2;
         int firstTrainingFrames = 1;
 
+        float calculateEntropyFrame(cv::Mat& );
 
     protected:
         /*Event identification and location*/

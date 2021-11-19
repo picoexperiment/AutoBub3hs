@@ -8,12 +8,10 @@
 
 
 #include "AnalyzerUnit.hpp"
-#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
+//#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
 #include "LBP/LBPUser.hpp"
 #include "AlgorithmTraining/Trainer.hpp"
 #include "common/UtilityFunctions.hpp"
-
-
 
 
 AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
@@ -159,7 +157,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
         /*Find LBP and then calculate Entropy*/
         //img_mask1 = lbpImage(img_mask0);
-        singleEntropy = calculateEntropyFrame(img_mask0);
+        singleEntropy = this->calculateEntropyFrame(img_mask0);
 
         /* ****************
          * Debug Point here
@@ -197,6 +195,51 @@ void AnalyzerUnit::FindTriggerFrame(void ){
     }
 
 
+}
+
+
+/*This function calculates ImageEntropy
+based on CPU routines. It converts the image to
+BW first. This is assumed that the image frames are
+subtracted already 
+2021 11 19 - Colin M
+    Moved here for implicit thread safety.
+*/
+float AnalyzerUnit::calculateEntropyFrame(cv::Mat& ImageFrame){
+
+    /*Memory for the image greyscale and histogram*/
+    cv::Mat image_greyscale, img_histogram;
+
+    /*Histogram sizes and bins*/
+    const int histSize[] = {16};
+    float range[] = { 0, 256 };
+    const float* histRange[] = { range };
+
+
+
+    float ImgEntropy=0.0;
+    /*Check if image is BW or colour*/
+    if (ImageFrame.channels() > 1){
+        /*Convert to BW*/
+        cv::cvtColor(ImageFrame, image_greyscale, cv::COLOR_BGR2GRAY);
+    } else {
+        /*The = operator assigns pointers so no memory is wasted*/
+        image_greyscale = ImageFrame;
+    }
+
+
+    /*Calculate Histogram*/
+    cv::calcHist(&image_greyscale, 1, 0,        cv::Mat(), img_histogram, 1, histSize, histRange, true, false);
+    /*Normalize Hist*/
+    img_histogram = img_histogram/(ImageFrame.rows*ImageFrame.cols);
+    /*Calculate Entropy*/
+    for (int i=0; i<img_histogram.rows; i++){
+            float binEntry = img_histogram.at<float>(i, 0);
+            if (binEntry !=0)
+                ImgEntropy -= binEntry * log2(binEntry);
+    }
+
+    return ImgEntropy;
 }
 
 /*Misc functions*/
