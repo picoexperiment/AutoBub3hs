@@ -220,12 +220,16 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, NewFrameDiffTrig);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png", NewFrameDiffTrig);
+    if (!this->nonStopMode){
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0_TrigFrame.png", this->triggerFrame);
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_00_AvgImage.png", this->TrainedData->TrainedAvgImage);
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png", NewFrameDiffTrig);
+    }
 
     overTheSigma = NewFrameDiffTrig - 6*this->TrainedData->TrainedSigmaImage;
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_2_OvrThe6Sigma.png", overTheSigma);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_OvrThe6Sigma.png", overTheSigma);
 
 
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
@@ -234,14 +238,14 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
 
 
 
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -282,7 +286,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     }
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
 
 
     //NewFrameDiffTrig.refcount=0;
@@ -668,7 +672,6 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     /*Run the analyzer series*/
     this->CalculateInitialBubbleParams();
     
-
     if (this->MatTrigFrame<29){
         for (int k=1; k<=NumFramesBubbleTrack; k++)
         this->CalculatePostTriggerFrameParams(k); //##############################################################
@@ -676,6 +679,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
         for (int k=1; k<=(39-this->MatTrigFrame); k++)
         this->CalculatePostTriggerFrameParams(k);
     }
+
 
 
 
@@ -711,7 +715,7 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
 
     } else {
 
-        std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
+        //std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
         return false; //It lies outside of the acceptable range
     }
 
