@@ -229,19 +229,19 @@ int main(int argc, char** argv)
         {
             #pragma omp single nowait
             {
-                AnyCamAnalysis(EventList[evi], imageDir, 0, false, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
+                AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
             }
             #pragma omp single nowait
             {
-                AnyCamAnalysis(EventList[evi], imageDir, 1, false, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
+                AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
             }
             #pragma omp single nowait
             {
-                AnyCamAnalysis(EventList[evi], imageDir, 2, false, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
+                AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
             }
             #pragma omp single nowait
             {
-                AnyCamAnalysis(EventList[evi], imageDir, 3, false, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
+                AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
             }
         }
 
