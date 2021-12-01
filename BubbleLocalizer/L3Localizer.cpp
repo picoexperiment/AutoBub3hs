@@ -35,6 +35,10 @@
 #include "../bubble/bubble.hpp"
 #include "../common/CommonParameters.h"
 
+// Needed for opencv >= 3.0.0
+#if CV_VERSION_MAJOR > 2
+#include "opencv2/imgproc/types_c.h"
+#endif
 
 
 /* ******************************************************************************
