@@ -170,17 +170,37 @@ int main(int argc, char** argv)
     printf("**Starting training. AutoBub is in learn mode**\n");
     Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
     Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
-    Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
+    Trainer *TrainC2 = new Trainer(2, EventList, eventDir);
     Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
 
     //Trainer* trainers [4] = {TrainC0, TrainC1, TrainC2, TrainC3};
 
 
     try {
-        TrainC0->MakeAvgSigmaImage(false);
-        TrainC1->MakeAvgSigmaImage(false);
-        TrainC2->MakeAvgSigmaImage(false); //cam2,3 absent in data now
-        TrainC3->MakeAvgSigmaImage(false);
+        #pragma omp parallel
+        {
+            #pragma omp single nowait
+            {
+                TrainC0->MakeAvgSigmaImage(false);
+            }
+            #pragma omp single nowait
+            {
+                TrainC1->MakeAvgSigmaImage(false);
+            }
+            #pragma omp single nowait
+            {
+                TrainC2->MakeAvgSigmaImage(false);
+            }
+            #pragma omp single nowait
+            {
+                TrainC3->MakeAvgSigmaImage(false);
+            }
+        }
+
+//        TrainC0->MakeAvgSigmaImage(false);
+//        TrainC1->MakeAvgSigmaImage(false);
+//        TrainC2->MakeAvgSigmaImage(false); //cam2,3 absent in data now
+//        TrainC3->MakeAvgSigmaImage(false);
 
     } catch (...) {
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
@@ -198,24 +218,27 @@ int main(int argc, char** argv)
 
     printf("***Training complete. AutoBub is now in detect mode***\n");
     // Create a separate writer per event
-    //delete PICO60Output;
+    delete PICO60Output;
 
 
     /*Detect mode
      *Iterate through all the events in the list and detect bubbles in them one by one
      *A seprate procedure will store them to a file at the end
      */
-//    #pragma omp parallel for ordered schedule(static, 1)
+    int num_threads_total = omp_get_max_threads();
+    int num_threads_cam = 4;
+    int num_threads_evs = int(num_threads_total / num_threads_cam);
+    std::cout << "Total threads: " << num_threads_total << std::endl;
+    #pragma omp parallel for ordered schedule(static, 1) num_threads(num_threads_total)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
-        //OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+        OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
 
         printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
-
 
         /* ***************************
          * ***** Camera Operations ******
@@ -225,31 +248,21 @@ int main(int argc, char** argv)
         AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1, mask_dir);
         AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir); // cam2,3 absent in data now
         AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3, mask_dir);
-        #pragma omp parallel
-        {
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
-            }
-        }
+
+        AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
+        AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
+        AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
+        AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-        #pragma omp barrier
-        PICO60Output->writeCameraOutput();
+//        #pragma omp barrier
+        #pragma omp ordered
+        {
+           PICO60Output->writeCameraOutput();
+        }
 
         delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
+        delete PICO60Output;
     }
 
     printf("run complete.\n");
@@ -259,7 +272,7 @@ int main(int argc, char** argv)
     delete TrainC1;
     delete TrainC2; //cam2,3 absent in data now
     delete TrainC3;
-    delete PICO60Output; //uncomment this if there is a single writer
+//    delete PICO60Output; //uncomment this if there is a single writer
 
 
     printf("AutoBub done analyzing this run. Thank you.\n");
