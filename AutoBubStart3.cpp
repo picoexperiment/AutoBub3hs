@@ -80,6 +80,7 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
         AnalyzerCGeneric->ParseAndSortFramesInFolder();
         AnalyzerCGeneric->FindTriggerFrame();
         //cout<<"Trigger Frame: "<<AnalyzerCGeneric->MatTrigFrame<<"\n";
+        //std::cout << actualEventNumber << " " << camera << " " << AnalyzerCGeneric->MatTrigFrame <<  " " << AnalyzerCGeneric->TriggerFrameIdentificationStatus << std::endl;
         if (AnalyzerCGeneric->okToProceed)
         {
 
@@ -129,9 +130,14 @@ int main(int argc, char** argv)
     std::string dataLoc = argv[1];
     std::string run_number = argv[2];
     std::string out_dir = argv[3];
-    std::string mask_dir = argv[4];
 
-    std::string eventDir=dataLoc+run_number+"/";
+    std::string mask_dir = "";
+    if (argc>=5){ mask_dir = argv[4]; }
+
+    std::string data_series = "";
+    if (argc>=6){ data_series = argv[5]; }
+
+    std::string eventDir = dataLoc + run_number + "/";
 
 
     /*I anticipate the object to become large with many bubbles, so I wanted it on the heap*/
@@ -164,14 +170,33 @@ int main(int argc, char** argv)
     /*Event list is now constructed*/
 
 
+    /* The following variables deal with the different ways that images have been
+     * saved in different experiments.
+     */
+    std::string imageFormat;
+    std::string imageFolder;
+    if (data_series=="01l-21" | data_series=="2l-16"){
+            imageFormat = "cam%dimage %u.bmp";
+            imageFolder = "/";
+    }
+    else {
+            imageFormat = "cam%d_image%u.png";
+            imageFolder = "/Images/";
+    }
+
+    std::cout << imageFormat << " " << imageFolder << std::endl;
+
+
+
+
     /*Learn Mode
      *Train on a given set of images for background subtract
      */
     printf("**Starting training. AutoBub is in learn mode**\n");
-    Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
-    Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
-    Trainer *TrainC2 = new Trainer(2, EventList, eventDir);
-    Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
+    Trainer *TrainC0 = new Trainer(0, EventList, eventDir, imageFormat, imageFolder);
+    Trainer *TrainC1 = new Trainer(1, EventList, eventDir, imageFormat, imageFolder);
+    Trainer *TrainC2 = new Trainer(2, EventList, eventDir, imageFormat, imageFolder);
+    Trainer *TrainC3 = new Trainer(3, EventList, eventDir, imageFormat, imageFolder);
 
     //Trainer* trainers [4] = {TrainC0, TrainC1, TrainC2, TrainC3};
 
@@ -246,7 +271,7 @@ int main(int argc, char** argv)
         //#pragma omp ordered
         AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0, mask_dir);
         AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1, mask_dir);
-        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir); // cam2,3 absent in data now
+        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir);
         AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3, mask_dir);
 
         AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);

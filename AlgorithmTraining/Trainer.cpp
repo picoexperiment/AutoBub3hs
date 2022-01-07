@@ -10,6 +10,7 @@
 #include "../LBP/LBPUser.hpp"
 //#include "../ImageEntropyMethods/ImageEntropyMethods.hpp"
 #include "../common/UtilityFunctions.hpp"
+#include "../FrameSorter.hpp"
 
 
 //#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
@@ -19,13 +20,19 @@
 
 
 
-Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir)
+Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->camera=camera;
     this->EventList = EventList;
     this->EventDir = EventDir;
+    this->ImageFormat = ImageFormat;
+    this->ImageFolder = ImageFolder;
 
+    // SearchPattern is used in sorting images in the image folder.
+    std::string searchCode = "cam%d";
+    int searchStart = ImageFormat.find(searchCode);
+    this->SearchPattern = ImageFormat.substr(searchStart, searchStart + searchCode.size() + 5);
 
 }
 
@@ -49,6 +56,10 @@ Trainer::Trainer(const Trainer &other_trainer){
     other_trainer.TrainedLBPSigma.copyTo(this->TrainedLBPSigma);
 
     this->isLBPApplied = other_trainer.isLBPApplied;
+
+    this->ImageFormat = other_trainer.ImageFormat;
+    this->ImageFolder = other_trainer.ImageFolder;
+    this->SearchPattern = other_trainer.SearchPattern;
 }
 
 Trainer::~Trainer(void ) {}
@@ -88,14 +99,14 @@ void Trainer::ParseAndSortFramesInFolder(std::string searchPattern, std::string 
                 // you want here. Something like:
                 if ( strstr( hFile->d_name, searchPattern.c_str() )){
                     this->CameraFrames.push_back(std::string(hFile->d_name));
-                    }
+                }
             }
 
 
 
             closedir (dir);
-
-            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSortFuncTrainer);
+            FrameSorter frameSorter(this->ImageFormat);
+            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSorter);//frameSortFuncTrainer);
 
         }
         else
@@ -213,14 +224,15 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
     for (int i=0; i<this->EventList.size(); i++)
     {
-        ThisEventDir = this->EventDir+EventList[i]+"/Images/";
-        std::string ImageFilePattern = "cam"+std::to_string(this->camera)+"_image";
+        ThisEventDir = this->EventDir + EventList[i] + this->ImageFolder;
+
+        char tmpImageFilePattern[30];
+        sprintf(tmpImageFilePattern, this->SearchPattern.c_str(), this->camera);
+        std::string ImageFilePattern = tmpImageFilePattern;//"cam"+std::to_string(this->camera)+"_image";
+
         this->ParseAndSortFramesInFolder(ImageFilePattern, ThisEventDir);
 
-
-
-
-        TestingForEntropyArray.clear(); 
+        TestingForEntropyArray.clear();
 
         /*The for block loads images 0 and 1 from each event*/
 
@@ -302,7 +314,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 /*This function calculates ImageEntropy
 based on CPU routines. It converts the image to
 BW first. This is assumed that the image frames are
-subtracted already 
+subtracted already
 2021 11 19 - Colin M
     Moved here for implicit thread safety.
 */
@@ -352,11 +364,11 @@ float Trainer::calculateEntropyFrame(cv::Mat& ImageFrame){
  * the camera frames. Not to be used otherwise.
  */
 
-bool frameSortFuncTrainer(std::string i, std::string j)
+bool Trainer::frameSortFuncTrainer(std::string i, std::string j)
 {
 
     unsigned int sequence_i, camera_i;
-    int got_i = sscanf(i.c_str(),  "cam%d_image%u.png",
+    int got_i = sscanf(i.c_str(), this->ImageFormat.c_str(),
                        &camera_i, &sequence_i
                       );
 
@@ -364,7 +376,7 @@ bool frameSortFuncTrainer(std::string i, std::string j)
     assert(got_i == 2);
 
     unsigned int  sequence_j, camera_j;
-    int got_j = sscanf(j.c_str(),  "cam%d_image%u.png",
+    int got_j = sscanf(j.c_str(),  this->ImageFormat.c_str(),
                        &camera_j, &sequence_j
                       );
     assert(got_j == 2);

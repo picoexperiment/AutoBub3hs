@@ -20,12 +20,14 @@ class Trainer{
         int camera;
         int StatusCode;
         std::string EventDir;
-
+        std::string ImageFolder;
+        std::string SearchPattern;
 
     protected:
 
 
     public:
+        std::string ImageFormat;
 
         /*direct access to the trained data*/
         cv::Mat TrainedAvgImage;
@@ -42,7 +44,7 @@ class Trainer{
         std::vector<int> TrainingSequence {0, 1};
 
         /*Trainer instance initilized with the camera number*/
-        Trainer(int,  std::vector<std::string>, std::string  );
+        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string );
         Trainer(const Trainer &other_trainer);
         ~Trainer(void );
 
@@ -53,8 +55,6 @@ class Trainer{
 
 };
 
-/*Helper functions*/
-bool frameSortFuncTrainer(std::string , std::string );
 
 
 #endif // ANALYZERUNIT_HPP_INCLUDED

@@ -245,7 +245,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -575,7 +575,7 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
-            
+
             //Checking if the coordinates of the feature are within acceptable area (cam_mask)
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
                 //if not, we continue and check next bubble without adding it to Bubblelist
@@ -671,7 +671,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 
     /*Run the analyzer series*/
     this->CalculateInitialBubbleParams();
-    
+
     if (this->MatTrigFrame<29){
         for (int k=1; k<=NumFramesBubbleTrack; k++)
         this->CalculatePostTriggerFrameParams(k); //##############################################################
@@ -703,6 +703,11 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
     std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
     cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
+    if (mask_image.empty()){
+        std::cout << "Mask image not loadable for event " << this->EventID
+            << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
+        return true;
+    }
 //    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
 
     /*the cam masks we currently have are grayscale bitmaps meaning we either have a 255 or 0 pixel value. (it's one bit but for some reason it is 255)

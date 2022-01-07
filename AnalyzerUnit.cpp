@@ -2,6 +2,7 @@
 #include <string>
 #include <dirent.h>
 #include <iostream>
+#include <functional>
 
 
 #include <opencv2/opencv.hpp>
@@ -12,6 +13,7 @@
 #include "LBP/LBPUser.hpp"
 #include "AlgorithmTraining/Trainer.hpp"
 #include "common/UtilityFunctions.hpp"
+#include "FrameSorter.hpp"
 
 
 AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
@@ -22,7 +24,8 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
     this->CameraNumber=CameraNumber;
     this->EventID=EventID;
 
-    this->TrainedData = *TrainedData;
+    this->TrainedData = new Trainer(**TrainedData);
+    this->MatTrigFrame = 0;
 
 }
 
@@ -32,6 +35,7 @@ AnalyzerUnit::~AnalyzerUnit(void ){
     for (int i=0; i<this->BubbleList.size(); i++){
         delete this->BubbleList[i];
     }
+    if (this->TrainedData) delete this->TrainedData;
 }
 
 
@@ -77,8 +81,8 @@ void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 
 
             closedir (dir);
-
-            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSortFunc);
+            FrameSorter frameSorter(this->TrainedData->ImageFormat);
+            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSorter);
 
         }
         else
@@ -181,9 +185,34 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
         /*Nothing works better than manual entropy settings. :-(*/
         if (singleEntropy > entropyThreshold and i > this->minEvalFrameNumber) {
-            this->TriggerFrameIdentificationStatus = 0;
-            this->MatTrigFrame = i;
-            break;
+            //std::cout << this->EventID << " " << this->CameraFrames[i] << " " << singleEntropy << std::endl;
+            /* LED flicker check: check if the following frame is also
+             * above the entropy threshold. Entropy for valid events grows,
+             * while flicker events have one frame above threshold then goes
+             * back below threshold.
+             */
+            if (i != this->CameraFrames.size()-1){
+                std::string evalImg = this->ImageDir + this->CameraFrames[i+1];
+
+                if(getFilesize(evalImg)<900000){
+                    this->okToProceed=false;
+                    this->TriggerFrameIdentificationStatus = -9;
+                    return;
+                }
+                workingFrame = cv::imread(evalImg.c_str());
+
+                cv::absdiff(workingFrame, comparisonFrame, img_mask0);
+
+                singleEntropy = this->calculateEntropyFrame(img_mask0);
+
+                if (singleEntropy > 2/3 * entropyThreshold){
+                    this->TriggerFrameIdentificationStatus = 0;
+                    this->MatTrigFrame = i;
+                    break;
+                }
+
+            }
+
         }
     }
 
@@ -201,7 +230,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 /*This function calculates ImageEntropy
 based on CPU routines. It converts the image to
 BW first. This is assumed that the image frames are
-subtracted already 
+subtracted already
 2021 11 19 - Colin M
     Moved here for implicit thread safety.
 */
