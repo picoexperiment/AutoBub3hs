@@ -54,7 +54,11 @@ AnalyzerUnit::~AnalyzerUnit(void ){
 void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 {
 
-    std::string searchPattern = "cam"+std::to_string(this->CameraNumber)+"_image";
+    //std::string searchPattern = "cam"+std::to_string(this->CameraNumber)+"_image";
+
+    char tmpSearchPattern[30];
+    sprintf(tmpSearchPattern, TrainedData->SearchPattern.c_str(), this->CameraNumber);
+    std::string searchPattern = tmpSearchPattern;
 
     /*Function to Generate File Lists*/
     {
@@ -109,7 +113,7 @@ void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 void AnalyzerUnit::FindTriggerFrame(void ){
 
     /*First, check if the sequence of events is malformed*/
-    if (this->CameraFrames.size()<20){
+    if (this->CameraFrames.size()<5){
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
@@ -132,13 +136,15 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
-    if(getFilesize(refImg)<900000){
+    if(getFilesize(refImg)<50000){
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
     }
 
     comparisonFrame = cv::imread(refImg.c_str());
+    /* GaussianBlur can help with noisy images */
+    //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
 
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
@@ -150,12 +156,15 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         std::string evalImg = this->ImageDir + this->CameraFrames[i];
 
         /*Check if image is malformed. If yes, then stop*/
-        if(getFilesize(evalImg)<900000){
+        if(getFilesize(evalImg)<50000){
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
         }
         workingFrame = cv::imread(evalImg.c_str());
+        /* GaussianBlur can help with noisy images */
+        //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
+
         /*BackgroundSubtract*/
         cv::absdiff(workingFrame, comparisonFrame, img_mask0);
 
@@ -194,7 +203,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
             if (i != this->CameraFrames.size()-1){
                 std::string evalImg = this->ImageDir + this->CameraFrames[i+1];
 
-                if(getFilesize(evalImg)<900000){
+                if(getFilesize(evalImg)<50000){
                     this->okToProceed=false;
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
