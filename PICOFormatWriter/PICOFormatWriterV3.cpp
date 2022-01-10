@@ -5,7 +5,7 @@
 
 
 #include <opencv2/opencv.hpp>
-#include "PICOFormatWriterV2.hpp"
+#include "PICOFormatWriterV3.hpp"
 #include "../bubble/bubble.hpp"
 #include "../common/CommonParameters.h"
 
@@ -17,7 +17,7 @@
 
 
 
-OutputWriter::OutputWriter(std::string OutDir, std::string run_number)
+OutputWriter::OutputWriter(std::string OutDir, std::string run_number, int frameOffset)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->OutputDir = OutDir;
@@ -25,6 +25,8 @@ OutputWriter::OutputWriter(std::string OutDir, std::string run_number)
 
     this->abubOutFilename = this->OutputDir+"abub3hs_"+this->run_number+".txt";
     //this->OutFile.open(this->abubOutFilename);
+    
+    this->frameOffset = frameOffset;
 
 }
 
@@ -101,6 +103,7 @@ void OutputWriter::stageCameraOutput(std::vector<bubble*> BubbleRectIn, int came
     thisBubbleData->StatusCode = tempStatus;
     thisBubbleData->frame0 = frame0;
     thisBubbleData->event = event;
+    thisBubbleData->written = true;
 
 }
 
@@ -120,20 +123,24 @@ void OutputWriter::stageCameraOutputError(int camera, int error, int event){
     if (camera==0) {
         this->BubbleData0.StatusCode = error;
         this->BubbleData0.event = event;
+        this->BubbleData0.written = true;
     } else if (camera==1) {
         this->BubbleData1.StatusCode = error;
         this->BubbleData1.event = event;
+        this->BubbleData1.written = true;
     } else if (camera==2) {
         this->BubbleData2.StatusCode = error;
         this->BubbleData2.event = event;
+        this->BubbleData2.written = true;
     } else if (camera==3) {
         this->BubbleData3.StatusCode = error;
         this->BubbleData3.event = event;
+        this->BubbleData0.written = true;
     }
 
 }
 
-OutputWriter::BubbleData::BubbleData(){};
+OutputWriter::BubbleData::BubbleData(){ written = false; };
 
 
 void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBubTotal){
@@ -150,6 +157,7 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
     else if (camera==2) workingData = &this->BubbleData2;
     else if (camera==3) workingData = &this->BubbleData3;
 
+    if (!workingData->written) {return;};
 
     //int event;
     //int frame0=50;
@@ -193,7 +201,7 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
             //run ev iBubImage TotalBub4CamImage camera
             this->_StreamOutput<<this->run_number<<"  "<<workingData->event<<"  "<<ibubImageStart+i<<"  "<<nBubTotal<<"  "<<camera<<"  ";
             //frame0
-            this->_StreamOutput<<workingData->frame0+30<<"  ";
+            this->_StreamOutput<<workingData->frame0 + this->frameOffset << "  ";
             //hori vert smajdiam smindiam
 
 
@@ -220,7 +228,7 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
             /*Tracking data*/
             if (numPointsExcess <= 0 ){
                 for (int j=1; j<=numPointsTracked; j++)
-                    this->_StreamOutput<<workingData->frame0+30+j<<"  ";
+                    this->_StreamOutput<<workingData->frame0 + this->frameOffset + j <<"  ";
 
                 /*Tracking*/
                 for (int j=1; j<=numPointsTracked; j++)
@@ -246,9 +254,9 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
             } else if (numPointsExcess > 0 ){
 
                 for (int j=1; j<=numPointsTracked; j++)
-                    this->_StreamOutput<<workingData->frame0+30+j<<"  ";
+                    this->_StreamOutput<<workingData->frame0+this->frameOffset+j<<"  ";
                 for (int j=0; j<numPointsExcess; j++)
-                    this->_StreamOutput<<workingData->frame0+30+numPointsTracked+j<<"  ";
+                    this->_StreamOutput<<workingData->frame0+this->frameOffset+numPointsTracked+j<<"  ";
 
                 /*Tracking*/
 
@@ -291,7 +299,7 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
 
     }
 
-
+    workingData->written = false;
 
 }
 

@@ -139,9 +139,25 @@ int main(int argc, char** argv)
 
     std::string eventDir = dataLoc + run_number + "/";
 
+    /* The following variables deal with the different ways that images have been
+     * saved in different experiments.
+     */
+    std::string imageFormat;
+    std::string imageFolder;
+    int frameOffset
+    if (data_series=="01l-21" | data_series=="2l-16"){
+            imageFormat = "cam%dimage %u.bmp";
+            imageFolder = "/";
+            frameOffset = 0;
+    }
+    else {
+            imageFormat = "cam%d_image%u.png";
+            imageFolder = "/Images/";
+            frameOffset = 30;
+    }
 
     /*I anticipate the object to become large with many bubbles, so I wanted it on the heap*/
-    OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+    OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset);
     PICO60Output->writeHeader();
 
     /*Construct list of events*/
@@ -168,23 +184,6 @@ int main(int argc, char** argv)
     /*A sort is unnecessary at this level, but it is good practice and does not cost extra resources*/
     std::sort(EventList.begin(), EventList.end(), eventNameOrderSort);
     /*Event list is now constructed*/
-
-
-    /* The following variables deal with the different ways that images have been
-     * saved in different experiments.
-     */
-    std::string imageFormat;
-    std::string imageFolder;
-    if (data_series=="01l-21" | data_series=="2l-16"){
-            imageFormat = "cam%dimage %u.bmp";
-            imageFolder = "/";
-    }
-    else {
-            imageFormat = "cam%d_image%u.png";
-            imageFolder = "/Images/";
-    }
-
-    std::cout << imageFormat << " " << imageFolder << std::endl;
 
 
 
@@ -257,7 +256,7 @@ int main(int argc, char** argv)
     #pragma omp parallel for ordered schedule(static, 1) num_threads(num_threads_total)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
-        OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+        OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset);
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
@@ -280,7 +279,6 @@ int main(int argc, char** argv)
         AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-//        #pragma omp barrier
         #pragma omp ordered
         {
            PICO60Output->writeCameraOutput();

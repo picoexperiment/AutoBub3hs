@@ -16,6 +16,7 @@ class OutputWriter{
     private:
 
         int camera;
+        int frameOffset;
         int StatusCode;
         std::string OutputDir;
         std::string run_number;
@@ -37,6 +38,7 @@ class OutputWriter{
             int event;
             float dzdt;
             float drdt;
+            bool written;
             BubbleData();
         };
         /*direct access to the trained data*/
@@ -47,7 +49,7 @@ class OutputWriter{
 
 
         /*Trainer instance initilized with the camera number*/
-        OutputWriter(std::string, std::string );
+        OutputWriter(std::string, std::string, int );
         ~OutputWriter(void );
 
         /*Compute the mean and std*/
