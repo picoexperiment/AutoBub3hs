@@ -640,8 +640,14 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     //debugShow(sigmaImageRaw);
     /*Check for malformed events*/
 
-    if (this->CameraFrames.size()<=20) this->okToProceed=false;
+    if (this->CameraFrames.size()<=5) this->okToProceed=false;
 
+    /* Doesn't seem necessary...
+     * The following loop basically only checks if the trigger frame is
+     * within 6 frames of the final frame in the set, but that can be checked
+     * while analyzing the data.
+    */
+    /*
     for (int i=this->MatTrigFrame; i<=this->MatTrigFrame+6; i++){
         if (i >= this->CameraFrames.size()){
             this->okToProceed=false;
@@ -653,6 +659,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
             std::cout<<"Failed analyzing event at: "<<this->ImageDir<<this->CameraFrames[i]<<"\n";
         }
     }
+    */
 
 
     /* ******************************** */
@@ -673,11 +680,15 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     this->CalculateInitialBubbleParams();
 
     if (this->MatTrigFrame<29){
-        for (int k=1; k<=NumFramesBubbleTrack; k++)
-        this->CalculatePostTriggerFrameParams(k); //##############################################################
+        for (int k=1; k<=NumFramesBubbleTrack; k++){
+            if ( (this->MatTrigFrame + k) >= this->CameraFrames.size() ) break;
+            this->CalculatePostTriggerFrameParams(k);
+        }
     } else {
-        for (int k=1; k<=(39-this->MatTrigFrame); k++)
-        this->CalculatePostTriggerFrameParams(k);
+        for (int k=1; k<=(39-this->MatTrigFrame); k++){
+            if ( (this->MatTrigFrame + k) >= this->CameraFrames.size() ) break;
+            this->CalculatePostTriggerFrameParams(k);
+        }
     }
 
 
