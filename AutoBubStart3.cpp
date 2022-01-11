@@ -144,7 +144,7 @@ int main(int argc, char** argv)
      */
     std::string imageFormat;
     std::string imageFolder;
-    int frameOffset
+    int frameOffset;
     if (data_series=="01l-21" | data_series=="2l-16"){
             imageFormat = "cam%dimage %u.bmp";
             imageFolder = "/";
