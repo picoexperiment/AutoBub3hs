@@ -21,13 +21,13 @@ class Trainer{
         int StatusCode;
         std::string EventDir;
         std::string ImageFolder;
-        std::string SearchPattern;
 
     protected:
 
 
     public:
         std::string ImageFormat;
+        std::string SearchPattern;
 
         /*direct access to the trained data*/
         cv::Mat TrainedAvgImage;

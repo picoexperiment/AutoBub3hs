@@ -236,10 +236,10 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
         /*The for block loads images 0 and 1 from each event*/
 
-        if (this->CameraFrames.size() >20 ){
+        if (this->CameraFrames.size() > 0 ){
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
-                if (getFilesize(thisEventLocation) > 100000){ // it was 1000000=1MB, now 100kB=100000
+                if (getFilesize(thisEventLocation) > 50000){ // it was 1000000=1MB, then 100kB=100000, now 50 kB
                     tempImagingProcess = cv::imread(thisEventLocation, 0);
 
                     TestingForEntropyArray.push_back(tempImagingProcess);
@@ -288,7 +288,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
 
     if (backgroundImagingArray.size()==0){
-        printf("Training image set has 0 frames. This means that the event is malformed.\n");
+        std::cout << "Training image set for camera " << this->camera << " has 0 frames. This means that the event is malformed." << std::endl;
         throw -7;
     }
     /*Calculate mean and sigma of the raw images*/
