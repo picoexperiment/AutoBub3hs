@@ -25,7 +25,7 @@ OutputWriter::OutputWriter(std::string OutDir, std::string run_number, int frame
 
     this->abubOutFilename = this->OutputDir+"abub3hs_"+this->run_number+".txt";
     //this->OutFile.open(this->abubOutFilename);
-    
+
     this->frameOffset = frameOffset;
 
 }
@@ -103,7 +103,6 @@ void OutputWriter::stageCameraOutput(std::vector<bubble*> BubbleRectIn, int came
     thisBubbleData->StatusCode = tempStatus;
     thisBubbleData->frame0 = frame0;
     thisBubbleData->event = event;
-    thisBubbleData->written = true;
 
 }
 
@@ -123,24 +122,20 @@ void OutputWriter::stageCameraOutputError(int camera, int error, int event){
     if (camera==0) {
         this->BubbleData0.StatusCode = error;
         this->BubbleData0.event = event;
-        this->BubbleData0.written = true;
     } else if (camera==1) {
         this->BubbleData1.StatusCode = error;
         this->BubbleData1.event = event;
-        this->BubbleData1.written = true;
     } else if (camera==2) {
         this->BubbleData2.StatusCode = error;
         this->BubbleData2.event = event;
-        this->BubbleData2.written = true;
     } else if (camera==3) {
         this->BubbleData3.StatusCode = error;
         this->BubbleData3.event = event;
-        this->BubbleData0.written = true;
     }
 
 }
 
-OutputWriter::BubbleData::BubbleData(){ written = false; };
+OutputWriter::BubbleData::BubbleData(){};
 
 
 void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBubTotal){
@@ -157,7 +152,6 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
     else if (camera==2) workingData = &this->BubbleData2;
     else if (camera==3) workingData = &this->BubbleData3;
 
-    if (!workingData->written) {return;};
 
     //int event;
     //int frame0=50;
@@ -299,7 +293,6 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
 
     }
 
-    workingData->written = false;
 
 }
 

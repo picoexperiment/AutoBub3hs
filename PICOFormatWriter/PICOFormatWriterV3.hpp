@@ -38,7 +38,6 @@ class OutputWriter{
             int event;
             float dzdt;
             float drdt;
-            bool written;
             BubbleData();
         };
         /*direct access to the trained data*/
