@@ -18,7 +18,6 @@ class Trainer{
 
 
         int camera;
-        int StatusCode;
         std::string EventDir;
         std::string ImageFolder;
 
@@ -36,6 +35,8 @@ class Trainer{
         cv::Mat TrainedLBPSigma;
 
         bool isLBPApplied = false;
+
+        int StatusCode;
 
         /*Directory structure required for the training set*/
         std::vector<std::string> EventList;

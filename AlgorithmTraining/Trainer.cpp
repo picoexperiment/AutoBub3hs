@@ -34,6 +34,7 @@ Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string Ev
     int searchStart = ImageFormat.find(searchCode);
     this->SearchPattern = ImageFormat.substr(searchStart, searchStart + searchCode.size() + 5);
 
+    this->StatusCode = 0;
 }
 
 Trainer::Trainer(const Trainer &other_trainer){
@@ -289,7 +290,9 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
     if (backgroundImagingArray.size()==0){
         std::cout << "Training image set for camera " << this->camera << " has 0 frames. This means that the event is malformed." << std::endl;
-        throw -7;
+        this->StatusCode = -7;
+        return;
+        //throw -7;
     }
     /*Calculate mean and sigma of the raw images*/
     advance_cursor();

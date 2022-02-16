@@ -208,46 +208,31 @@ int main(int argc, char** argv)
     //Trainer *TrainC3 = new Trainer(3, EventList, eventDir, imageFormat, imageFolder);
 
 
-    try {
-        #pragma omp parallel for
-        for (int icam = 0; icam < numCams; icam++){
-            Trainers[icam]->MakeAvgSigmaImage(false);
-        }
-        /*
-        {
-            #pragma omp single nowait
-            {
-                TrainC0->MakeAvgSigmaImage(false);
-            }
-            #pragma omp single nowait
-            {
-                TrainC1->MakeAvgSigmaImage(false);
-            }
-            #pragma omp single nowait
-            {
-                TrainC2->MakeAvgSigmaImage(false);
-            }
-            #pragma omp single nowait
-            {
-                TrainC3->MakeAvgSigmaImage(false);
-            }
-        }
-        */
-    } catch (...) {
+    //try {
+    #pragma omp parallel for
+    for (int icam = 0; icam < numCams; icam++){
+        Trainers[icam]->MakeAvgSigmaImage(false);
+    }
+    //} catch (...) {
+
+    /* Check if the trainers succeeded, in which case StatusCode = 0 */
+    bool succeeded = true;
+    for (int icam = 0; icam < numCams; icam++){
+        if (Trainers[icam]->StatusCode){ succeeded = false; }
+    }
+
+    if (!succeeded){
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
         for (int evi=0; evi<EventList.size(); evi++){
             int actualEventNumber = atoi(EventList[evi].c_str());
             for (int icam = 0; icam < numCams; icam++){
                 PICO60Output->stageCameraOutputError(icam, -7, actualEventNumber);
             }
-            //PICO60Output->stageCameraOutputError(0,-7, actualEventNumber);
-            //PICO60Output->stageCameraOutputError(1,-7, actualEventNumber);
-            //PICO60Output->stageCameraOutputError(2,-7, actualEventNumber); //cam 2,3 absent in data now
-            //PICO60Output->stageCameraOutputError(3,-7, actualEventNumber);
-            //PICO60Output->writeCameraOutput();
+            PICO60Output->writeCameraOutput();
         }
         return -7;
     }
+    //}
 
 
     printf("***Training complete. AutoBub is now in detect mode***\n");
