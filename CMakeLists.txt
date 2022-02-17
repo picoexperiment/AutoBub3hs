@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project( DisplayImage )
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
+find_package( Boost REQUIRED COMPONENTS regex )
 
 set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
@@ -37,10 +38,14 @@ set_property(TARGET AbubEntropySubsystem PROPERTY PUBLIC_HEADER ${EntropyHeaders
 set(UtilitySources
     ${CMAKE_CURRENT_SOURCE_DIR}/common/UtilityFunctions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ParseFolder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/Parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/RawParser.cpp
 )
 set(UtilityHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/common/UtilityFunctions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ParseFolder.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/Parser.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/RawParser.hpp
 )
 add_library(AbubUtility SHARED ${UtilitySources})
 target_link_libraries(AbubUtility ${OpenCV_LIBS})

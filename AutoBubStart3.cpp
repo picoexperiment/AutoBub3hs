@@ -24,6 +24,8 @@
 
 /*Geyser Image Analysis Stuff*/
 #include "ParseFolder/ParseFolder.hpp"
+#include "ParseFolder/Parser.hpp"
+#include "ParseFolder/RawParser.hpp"
 //#include "common/CommonDatatypes.h"
 //#include "SQLiteDBstorage/imageAnalysisResults.hpp"
 #include "BubbleLocalizer/L3Localizer.hpp"
@@ -174,9 +176,12 @@ int main(int argc, char** argv)
     std::vector<std::string> EventList;
     int* EVstatuscode = 0;
 
+    Parser *Parser = new RawParser(eventDir, imageFolder, imageFormat);
+
     try
     {
-        GetEventDirLists(eventDir.c_str(), EventList, EVstatuscode);
+        //GetEventDirLists(eventDir.c_str(), EventList, EVstatuscode);
+        Parser->GetEventDirLists(EventList);
 
     /*Crash handler at the begining of the program - writes -5 if the folder could not be read*/
     }
@@ -302,6 +307,7 @@ int main(int argc, char** argv)
     //delete TrainC3;
 //    delete PICO60Output; //uncomment this if there is a single writer
 
+    delete Parser;
 
     printf("AutoBub done analyzing this run. Thank you.\n");
     return 0;
