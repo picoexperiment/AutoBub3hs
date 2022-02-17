@@ -46,7 +46,7 @@
  * ******************************************************************************/
 
 
-L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir)
+L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir, Parser* Parser):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir, Parser)
 {
 
 

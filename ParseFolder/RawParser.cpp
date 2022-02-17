@@ -17,16 +17,19 @@
 #include <sys/types.h> //.... added
 #include <sys/stat.h>  //....
 
-RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat):Parser(RunFolder, ImageFolder, ImageFormat){}
+#include <boost/regex.hpp>
+#include <boost/filesystem.hpp>
 
-void RawParser::GetImage(int EventNum, int Camera, int Frame, cv::Mat &Image){
-    char buf[100];
-    sprintf(buf, this->ImageFormat.c_str(), Camera, Frame);
+RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat) : Parser(RunFolder, ImageFolder, ImageFormat){}
 
-    std::string imagePath = this->RunFolder + "/" + std::to_string(EventNum) + "/" + this->ImageFolder + "/" +
-        buf;
+RawParser::RawParser(const RawParser &other) : Parser(other.RunFolder, other.ImageFolder, other.ImageFormat){}
 
-    Image = cv::imread(imagePath, 0);
+void RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
+    boost::filesystem::path imagePath(this->RunFolder);
+    imagePath = imagePath / EventID / this->ImageFolder / FrameName;
+
+    Image = cv::imread(imagePath.native(), 0);
+    //std::cout << imagePath << " " << Image.empty() << std::endl;
 }
 
 RawParser::~RawParser(){};
@@ -115,6 +118,27 @@ void RawParser::GetEventDirLists(std::vector<std::string>& EventList)
         /* could not open directory */
         //perror ("");
         this->StatusCode = 1;
+    }
+
+}
+
+void RawParser::ParseAndSortFramesInFolder(std::string EventID, int Camera, std::vector<std::string>& Contents){
+    using namespace boost::filesystem;
+
+    path eventDir = this->RunFolder;
+    eventDir /= EventID;
+    eventDir /= this->ImageFolder;
+
+    std::string re_str = "^.*cam" + std::to_string(Camera) + ".*(png|bmp)";
+    boost::regex re(re_str);
+
+    if (exists(eventDir) && is_directory(eventDir)){
+        for (const directory_entry& x : directory_iterator(eventDir)){
+            if (boost::regex_match(x.path().native(), re)){
+                Contents.push_back(x.path().filename().native());
+            }
+        }
+        std::sort(Contents.begin(), Contents.end());
     }
 
 }

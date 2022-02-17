@@ -16,7 +16,7 @@
 #include "FrameSorter.hpp"
 
 
-AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
+AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir, Parser* Parser)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->ImageDir=ImageDir;
@@ -26,7 +26,9 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
 
     this->TrainedData = new Trainer(**TrainedData);
     this->MatTrigFrame = 0;
+    this->FileParser = Parser;
 
+    this->FileParser->ParseAndSortFramesInFolder(this->EventID, this->CameraNumber, this->CameraFrames);
 }
 
 AnalyzerUnit::~AnalyzerUnit(void ){
@@ -142,7 +144,9 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         return;
     }
 
-    comparisonFrame = cv::imread(refImg.c_str());
+//    comparisonFrame = cv::imread(refImg.c_str());
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[0], comparisonFrame);
+
     /* GaussianBlur can help with noisy images */
     //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
 
@@ -161,7 +165,8 @@ void AnalyzerUnit::FindTriggerFrame(void ){
             this->TriggerFrameIdentificationStatus = -9;
             return;
         }
-        workingFrame = cv::imread(evalImg.c_str());
+        //workingFrame = cv::imread(evalImg.c_str(), 0);
+        this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
         /* GaussianBlur can help with noisy images */
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
@@ -208,7 +213,8 @@ void AnalyzerUnit::FindTriggerFrame(void ){
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
                 }
-                workingFrame = cv::imread(evalImg.c_str());
+                //workingFrame = cv::imread(evalImg.c_str(), 0);
+                this->FileParser->GetImage(this->EventID, this->CameraFrames[i+1], workingFrame);
 
                 cv::absdiff(workingFrame, comparisonFrame, img_mask0);
 

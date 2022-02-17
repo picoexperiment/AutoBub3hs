@@ -20,9 +20,10 @@ class Parser{
         Parser(std::string, std::string, std::string);
         ~Parser();
 
-        virtual void GetImage(int, int, int, cv::Mat&) = 0;
+        virtual void GetImage(std::string, std::string, cv::Mat&) = 0;
         virtual void GetEventDirLists(std::vector<std::string>&) = 0;
         virtual void GetFileLists(const char*, std::vector<std::string>&, const char*) = 0;
+        virtual void ParseAndSortFramesInFolder(std::string, int, std::vector<std::string>&) = 0;
 
 };
 

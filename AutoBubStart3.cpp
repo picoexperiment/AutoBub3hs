@@ -79,7 +79,7 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
     /*Exception handling - per camera*/
     try
     {
-        AnalyzerCGeneric->ParseAndSortFramesInFolder();
+        //AnalyzerCGeneric->ParseAndSortFramesInFolder();
         AnalyzerCGeneric->FindTriggerFrame();
         //cout<<"Trigger Frame: "<<AnalyzerCGeneric->MatTrigFrame<<"\n";
         //std::cout << actualEventNumber << " " << camera << " " << AnalyzerCGeneric->MatTrigFrame <<  " " << AnalyzerCGeneric->TriggerFrameIdentificationStatus << std::endl;
@@ -176,12 +176,12 @@ int main(int argc, char** argv)
     std::vector<std::string> EventList;
     int* EVstatuscode = 0;
 
-    Parser *Parser = new RawParser(eventDir, imageFolder, imageFormat);
+    Parser *FileParser = new RawParser(eventDir, imageFolder, imageFormat);
 
     try
     {
         //GetEventDirLists(eventDir.c_str(), EventList, EVstatuscode);
-        Parser->GetEventDirLists(EventList);
+        FileParser->GetEventDirLists(EventList);
 
     /*Crash handler at the begining of the program - writes -5 if the folder could not be read*/
     }
@@ -270,7 +270,7 @@ int main(int argc, char** argv)
         //#pragma omp ordered
         std::vector<AnalyzerUnit*> Analyzers;
         for (int icam = 0; icam < numCams; icam++){
-            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam],mask_dir));
+            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam], mask_dir, FileParser));
             AnyCamAnalysis(EventList[evi], imageDir, icam, true, &Trainers[icam], &PICO60Output, out_dir, actualEventNumber, &Analyzers[icam]);
         }
         /*
@@ -307,7 +307,7 @@ int main(int argc, char** argv)
     //delete TrainC3;
 //    delete PICO60Output; //uncomment this if there is a single writer
 
-    delete Parser;
+    delete FileParser;
 
     printf("AutoBub done analyzing this run. Thank you.\n");
     return 0;

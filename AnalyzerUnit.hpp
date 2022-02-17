@@ -7,6 +7,8 @@
 
 #include <opencv2/opencv.hpp>
 #include "bubble/bubble.hpp"
+#include "ParseFolder/Parser.hpp"
+#include "ParseFolder/RawParser.hpp"
 
 
 class AnalyzerUnit{
@@ -24,6 +26,8 @@ class AnalyzerUnit{
 
         float calculateEntropyFrame(cv::Mat& );
 
+        Parser *FileParser;
+
     protected:
         /*Event identification and location*/
         std::string ImageDir;
@@ -39,7 +43,7 @@ class AnalyzerUnit{
 
     public:
         /*Constructor and deconstructor*/
-        AnalyzerUnit(std::string, std::string, int, Trainer**, std::string );
+        AnalyzerUnit(std::string, std::string, int, Trainer**, std::string, Parser* );
         ~AnalyzerUnit(void );
 
         /*Function to parse and sort the triggers from the folder and the directory where the images are stored*/

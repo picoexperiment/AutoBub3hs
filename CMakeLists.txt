@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project( DisplayImage )
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
-find_package( Boost REQUIRED COMPONENTS regex )
+find_package( Boost REQUIRED COMPONENTS regex filesystem )
 
 set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
@@ -48,7 +48,7 @@ set(UtilityHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/RawParser.hpp
 )
 add_library(AbubUtility SHARED ${UtilitySources})
-target_link_libraries(AbubUtility ${OpenCV_LIBS})
+target_link_libraries(AbubUtility ${OpenCV_LIBS} ${Boost_LIBRARIES})
 set_property(TARGET AbubUtility PROPERTY PUBLIC_HEADER ${UtilityHeaders})
 
 
