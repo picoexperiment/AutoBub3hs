@@ -47,6 +47,7 @@ The error codes in the recon file are as follows:
 -5: Failed to make a file list of all files in the run (data corruption?)
 -6: Failed to analyze / segfault (malformed images / data corruption /missing images)
 -7: Failed to train on the dataset (some event folders might be empty)
+-10: Unknown storage format (current options are "raw" and "zip")
 
 
 

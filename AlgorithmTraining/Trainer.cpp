@@ -20,7 +20,7 @@
 
 
 
-Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder)
+Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder, Parser* FileParser)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->camera=camera;
@@ -28,6 +28,8 @@ Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string Ev
     this->EventDir = EventDir;
     this->ImageFormat = ImageFormat;
     this->ImageFolder = ImageFolder;
+
+    this->FileParser = FileParser;
 
     // SearchPattern is used in sorting images in the image folder.
     std::string searchCode = "cam%d";
@@ -63,7 +65,9 @@ Trainer::Trainer(const Trainer &other_trainer){
     this->SearchPattern = other_trainer.SearchPattern;
 }
 
-Trainer::~Trainer(void ) {}
+Trainer::~Trainer(void ) {
+    delete this->FileParser;
+}
 
 
 
@@ -231,17 +235,19 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
         sprintf(tmpImageFilePattern, this->SearchPattern.c_str(), this->camera);
         std::string ImageFilePattern = tmpImageFilePattern;//"cam"+std::to_string(this->camera)+"_image";
 
-        this->ParseAndSortFramesInFolder(ImageFilePattern, ThisEventDir);
+        //this->ParseAndSortFramesInFolder(ImageFilePattern, ThisEventDir);
+        this->FileParser->ParseAndSortFramesInFolder(EventList[i], this->camera, this->CameraFrames);
 
         TestingForEntropyArray.clear();
 
         /*The for block loads images 0 and 1 from each event*/
-
         if (this->CameraFrames.size() > 0 ){
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
+
                 if (getFilesize(thisEventLocation) > 50000){ // it was 1000000=1MB, then 100kB=100000, now 50 kB
-                    tempImagingProcess = cv::imread(thisEventLocation, 0);
+                    //tempImagingProcess = cv::imread(thisEventLocation, 0);
+                    this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
 
                     TestingForEntropyArray.push_back(tempImagingProcess);
                     isThisAGoodEvent = true;

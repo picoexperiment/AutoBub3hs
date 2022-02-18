@@ -10,8 +10,9 @@ class RawParser: public Parser {
 
     public:
         RawParser(std::string, std::string, std::string);
-        RawParser(const RawParser&);
         ~RawParser();
+
+        virtual RawParser* clone() override;
 
         void GetImage(std::string, std::string, cv::Mat&) override;
         void GetEventDirLists(std::vector<std::string>&) override;

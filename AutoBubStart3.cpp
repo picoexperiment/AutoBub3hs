@@ -26,6 +26,7 @@
 #include "ParseFolder/ParseFolder.hpp"
 #include "ParseFolder/Parser.hpp"
 #include "ParseFolder/RawParser.hpp"
+#include "ParseFolder/ZipParser.hpp"
 //#include "common/CommonDatatypes.h"
 //#include "SQLiteDBstorage/imageAnalysisResults.hpp"
 #include "BubbleLocalizer/L3Localizer.hpp"
@@ -139,7 +140,11 @@ int main(int argc, char** argv)
     std::string data_series = "";
     if (argc>=6){ data_series = argv[5]; }
 
+    std::string storage_format = "raw";
+    if (argc>=7){ storage_format = argv[6]; }
+
     std::string eventDir = dataLoc + run_number + "/";
+
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.
@@ -176,7 +181,22 @@ int main(int argc, char** argv)
     std::vector<std::string> EventList;
     int* EVstatuscode = 0;
 
-    Parser *FileParser = new RawParser(eventDir, imageFolder, imageFormat);
+
+    Parser *FileParser;
+    /* The Parser reads directories/zip files and retreives image data */
+    if (storage_format == "raw"){
+        FileParser = new RawParser(eventDir, imageFolder, imageFormat);
+    }
+    else if (storage_format == "zip"){
+        FileParser = new ZipParser(eventDir, imageFolder, imageFormat);
+    }
+    else {
+        std::cout << "Unknown storage format from command line arguments: " << storage_format << std::endl;
+        for (int icam = 0; icam < numCams; icam++){ PICO60Output->stageCameraOutputError(icam, -10, -1); }
+        PICO60Output->writeCameraOutput();
+        return -10;
+    }
+
 
     try
     {
@@ -206,7 +226,8 @@ int main(int argc, char** argv)
     printf("**Starting training. AutoBub is in learn mode**\n");
     std::vector<Trainer*> Trainers;
     for (int icam = 0; icam < numCams; icam++){
-        Trainers.push_back(new Trainer(icam, EventList, eventDir, imageFormat, imageFolder));
+        Parser *tp = FileParser->clone();
+        Trainers.push_back(new Trainer(icam, EventList, eventDir, imageFormat, imageFolder, tp));
     }
     //Trainer *TrainC1 = new Trainer(1, EventList, eventDir, imageFormat, imageFolder);
     //Trainer *TrainC2 = new Trainer(2, EventList, eventDir, imageFormat, imageFolder);
@@ -270,7 +291,9 @@ int main(int argc, char** argv)
         //#pragma omp ordered
         std::vector<AnalyzerUnit*> Analyzers;
         for (int icam = 0; icam < numCams; icam++){
-            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam], mask_dir, FileParser));
+            Parser *tp = FileParser->clone();
+
+            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam], mask_dir, tp));
             AnyCamAnalysis(EventList[evi], imageDir, icam, true, &Trainers[icam], &PICO60Output, out_dir, actualEventNumber, &Analyzers[icam]);
         }
         /*

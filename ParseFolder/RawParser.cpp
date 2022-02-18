@@ -20,16 +20,28 @@
 #include <boost/regex.hpp>
 #include <boost/filesystem.hpp>
 
+#define debug true
+#include <chrono>
+using std::chrono::milliseconds;
+
 RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat) : Parser(RunFolder, ImageFolder, ImageFormat){}
 
-RawParser::RawParser(const RawParser &other) : Parser(other.RunFolder, other.ImageFolder, other.ImageFormat){}
+RawParser* RawParser::clone(){
+    return new RawParser(this->RunFolder, this->ImageFolder, this->ImageFormat);
+}
 
 void RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
+    auto t0 = std::chrono::high_resolution_clock::now();
     boost::filesystem::path imagePath(this->RunFolder);
     imagePath = imagePath / EventID / this->ImageFolder / FrameName;
 
     Image = cv::imread(imagePath.native(), 0);
     //std::cout << imagePath << " " << Image.empty() << std::endl;
+    if (debug){
+        auto t1 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> dt = t1 - t0;
+        std::cout << "GetImage: " << dt.count() << std::endl;
+    }
 }
 
 RawParser::~RawParser(){};
@@ -140,5 +152,4 @@ void RawParser::ParseAndSortFramesInFolder(std::string EventID, int Camera, std:
         }
         std::sort(Contents.begin(), Contents.end());
     }
-
 }

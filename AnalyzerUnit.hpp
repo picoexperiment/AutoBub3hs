@@ -9,6 +9,7 @@
 #include "bubble/bubble.hpp"
 #include "ParseFolder/Parser.hpp"
 #include "ParseFolder/RawParser.hpp"
+#include "ParseFolder/ZipParser.hpp"
 
 
 class AnalyzerUnit{

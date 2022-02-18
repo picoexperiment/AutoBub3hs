@@ -38,6 +38,8 @@ AnalyzerUnit::~AnalyzerUnit(void ){
         delete this->BubbleList[i];
     }
     if (this->TrainedData) delete this->TrainedData;
+
+    if (this->FileParser) delete this->FileParser;
 }
 
 

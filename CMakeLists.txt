@@ -1,8 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 project( DisplayImage )
+
+add_subdirectory(minizip-ng)
+
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
-find_package( Boost REQUIRED COMPONENTS regex filesystem )
+find_package( Boost REQUIRED COMPONENTS regex filesystem QUIET )
+
+# Required for minizip-ng
+find_package(ZLIB QUIET)
+find_package(BZip2 QUIET)
+find_package(LibLZMA QUIET)
+find_package(ZSTD QUIET)
+find_package(OpenSSL)
 
 set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
@@ -40,15 +50,21 @@ set(UtilitySources
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ParseFolder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/Parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/RawParser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ZipParser.cpp
 )
 set(UtilityHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/common/UtilityFunctions.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ParseFolder.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/Parser.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/RawParser.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ParseFolder/ZipParser.hpp
 )
 add_library(AbubUtility SHARED ${UtilitySources})
-target_link_libraries(AbubUtility ${OpenCV_LIBS} ${Boost_LIBRARIES})
+target_include_directories(AbubUtility PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minizip-ng/)
+
+target_link_libraries(AbubUtility ${OpenCV_LIBS} ${Boost_LIBRARIES}
+    ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} ${LIBLZMA_LIBRARIES}
+    ${ZSTD_LIBRARIES} ${OPENSSL_LIBRARIES})
 set_property(TARGET AbubUtility PROPERTY PUBLIC_HEADER ${UtilityHeaders})
 
 
@@ -71,8 +87,8 @@ set(HEADERS
    ${CMAKE_CURRENT_SOURCE_DIR}/FrameSorter.hpp
 )
 
-
-
 add_executable( abub3hs AutoBubStart3.cpp )
-target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser AbubEntropySubsystem AbubUtility )
+target_include_directories(abub3hs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minizip-ng/)
+target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser
+    AbubEntropySubsystem AbubUtility minizip )
 #target_link_libraries( abub ${OpenCV_LIBS} ${SOURCE} ${HEADERS} )
