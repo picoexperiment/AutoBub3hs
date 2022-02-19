@@ -63,10 +63,12 @@ Trainer::Trainer(const Trainer &other_trainer){
     this->ImageFormat = other_trainer.ImageFormat;
     this->ImageFolder = other_trainer.ImageFolder;
     this->SearchPattern = other_trainer.SearchPattern;
+
+    this->FileParser = other_trainer.FileParser->clone();
 }
 
 Trainer::~Trainer(void ) {
-    delete this->FileParser;
+    if (this->FileParser) delete this->FileParser;
 }
 
 
