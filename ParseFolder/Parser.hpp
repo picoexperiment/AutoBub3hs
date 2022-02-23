@@ -18,7 +18,7 @@ class Parser{
 
     public:
         Parser(std::string, std::string, std::string);
-        ~Parser();
+        virtual ~Parser() = 0;
 
         virtual Parser* clone() = 0;
 

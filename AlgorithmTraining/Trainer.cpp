@@ -247,17 +247,13 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
 
-                if (getFilesize(thisEventLocation) > 50000){ // it was 1000000=1MB, then 100kB=100000, now 50 kB
-                    //tempImagingProcess = cv::imread(thisEventLocation, 0);
-                    this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
+                //tempImagingProcess = cv::imread(thisEventLocation, 0);
+                // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+                this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
 
-                    TestingForEntropyArray.push_back(tempImagingProcess);
-                    isThisAGoodEvent = true;
-                } else {
-                    isThisAGoodEvent = false;
-                    std::cout<<"Event "<<EventList[i]<<" is malformed. Skipping training on this event\n";
-                    break;
-                }
+                TestingForEntropyArray.push_back(tempImagingProcess);
+                isThisAGoodEvent = true;
+                /* if error with GetImage - return -7 */
             }
         } else {
             std::cout<<"Event "<<EventList[i]<<" is nonexistant on the disk. Skipping training on this event\n";

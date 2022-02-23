@@ -140,11 +140,15 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
+    
+    // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+    /*
     if(getFilesize(refImg)<50000){
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
     }
+    */
 
 //    comparisonFrame = cv::imread(refImg.c_str());
     this->FileParser->GetImage(this->EventID, this->CameraFrames[0], comparisonFrame);
@@ -162,11 +166,13 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         std::string evalImg = this->ImageDir + this->CameraFrames[i];
 
         /*Check if image is malformed. If yes, then stop*/
+        // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+        /*
         if(getFilesize(evalImg)<50000){
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
-        }
+        }*/
         //workingFrame = cv::imread(evalImg.c_str(), 0);
         this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
         /* GaussianBlur can help with noisy images */
@@ -210,11 +216,14 @@ void AnalyzerUnit::FindTriggerFrame(void ){
             if (i != this->CameraFrames.size()-1){
                 std::string evalImg = this->ImageDir + this->CameraFrames[i+1];
 
+                // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+                /*
                 if(getFilesize(evalImg)<50000){
                     this->okToProceed=false;
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
                 }
+                */
                 //workingFrame = cv::imread(evalImg.c_str(), 0);
                 this->FileParser->GetImage(this->EventID, this->CameraFrames[i+1], workingFrame);
 

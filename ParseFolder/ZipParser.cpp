@@ -24,9 +24,12 @@
 #include "mz.h"
 #include "mz_zip.h"
 #include "mz_strm.h"
+#include "mz_strm_os.h"
+#include "mz_strm_buf.h"
+#include "mz_strm_split.h"
 #include "mz_zip_rw.h"
 
-#define debug true
+#define debug false
 #include <chrono>
 using std::chrono::milliseconds;
 
@@ -40,10 +43,31 @@ Parser(RunFolder, ImageFolder, ImageFormat){
     if (p.extension() == "") p += ".zip";
     this->RunFolder = p.native();
 
-    this->lastImageLoc = -1;
+    /* All minizip functions which return ints are zero for
+     * success, or negative.  So we keep adding to err and
+     * check at the end if it's equal to 0. */
+    int err = 0;
 
-    mz_zip_reader_create(&this->zip_reader);
-    mz_zip_reader_open_file(this->zip_reader, this->RunFolder.c_str());
+    /* Create buffers, open zip file.
+     * This is taken almost verbatim from minizip-ng/mz_zip_reader.c.
+     */
+    mz_stream_os_create(&this->file_stream);
+    mz_stream_buffered_create(&this->buff_stream);
+    mz_stream_split_create(&this->split_stream);
+
+    err += mz_stream_set_base(this->buff_stream, this->file_stream);
+    err += mz_stream_set_base(this->split_stream, this->buff_stream);
+
+    err += mz_stream_open(this->split_stream, this->RunFolder.c_str(), MZ_OPEN_MODE_READ);
+
+    mz_zip_create(&this->zip_handle);
+    err += mz_zip_open(this->zip_handle, this->split_stream, MZ_OPEN_MODE_READ);
+
+    if (err != MZ_OK){
+        std::cerr << "Error initializing zip file; cannot continue" << std::endl;
+        throw -10;
+    }
+
 }
 
 
@@ -51,8 +75,14 @@ Parser(RunFolder, ImageFolder, ImageFormat){
  * Release the zip_reader object
  */
 ZipParser::~ZipParser(){
-    mz_zip_reader_close(this->zip_reader);
-    mz_zip_reader_delete(&this->zip_reader);
+    mz_zip_close(this->zip_handle);
+    mz_zip_delete(&this->zip_handle);
+    mz_stream_split_close(this->split_stream);
+    mz_stream_split_delete(&this->split_stream);
+    mz_stream_buffered_close(this->buff_stream);
+    mz_stream_buffered_delete(&this->buff_stream);
+    mz_stream_os_close(this->file_stream);
+    mz_stream_os_delete(&this->file_stream);
 }
 
 
@@ -64,6 +94,7 @@ ZipParser* ZipParser::clone(){
 
     other->FileContents = this->FileContents;
     other->ImageNames = this->ImageNames;
+    other->ImageLocs = this->ImageLocs;
 
     return other;
 }
@@ -71,47 +102,36 @@ ZipParser* ZipParser::clone(){
 
 void ZipParser::BuildFileList(){
     auto t0 = std::chrono::high_resolution_clock::now();
+
     /* Build a vector with the file contents */
-    mz_zip_file *file_info = NULL;
-    if (mz_zip_reader_goto_first_entry(zip_reader) == MZ_OK){
-        if (mz_zip_reader_entry_get_info(zip_reader, &file_info) == MZ_OK){
-            this->FileContents.push_back(file_info->filename);
-        }
-        else {
-            std::cout << "Could not get info for first file; exiting..." << std::endl;
-            throw -1;
-        }
-    }
-    else {
-        std::cout << "Could not seek first file; exiting..." << std::endl;
-        throw -1;
-    }
-
-    while (mz_zip_reader_goto_next_entry(zip_reader) == MZ_OK){
-        if (mz_zip_reader_entry_get_info(zip_reader, &file_info) == MZ_OK){
-            this->FileContents.push_back(file_info->filename);
-        }
-        else {
-            std::cout << "Failed to get entry info after first; exiting..." << std::endl;
-            throw -1;
-        }
-    }
-
-    /* Capture event and file name info from FileContents.
-     * The regex fills the match object with the event and file name in the
-     * [1] and [2] place.
-     */
     std::string re_str = "^.*/(\\d+)/.*/?(cam\\d.*image\\s*\\d+.*(png|bmp))";
     boost::regex re(re_str);
     boost::smatch match;
 
-    for (int i=0; i<this->FileContents.size(); i++){
-        if (boost::regex_match(this->FileContents[i], match, re)){
-            this->ImageNames[match[1].str()][match[2].str()] = this->FileContents[i];
+    int err = 0;
+    mz_zip_file *file_info = NULL;
+
+    err = mz_zip_goto_first_entry(this->zip_handle);
+
+    /* Retreive event file name and location from entries in zip file.
+     * The regex fills the match object with the event and file name in the
+     * [1] and [2] place.
+     */
+    while (err == MZ_OK){
+        err = mz_zip_entry_get_info(this->zip_handle, &file_info);
+        this->FileContents.push_back(file_info->filename);
+        std::string filename = file_info->filename;
+        if (boost::regex_match(filename, match, re)){
+            this->ImageNames[match[1].str()][match[2].str()] = file_info->filename;
+            this->ImageLocs[match[1].str()][match[2].str()] = mz_zip_get_entry(this->zip_handle);
         }
+        err = mz_zip_goto_next_entry(this->zip_handle);
+    }
+    if (err != MZ_END_OF_LIST){
+        std::cout << "Error when creating file list; cannot continue." << std::endl;
+        throw -10;
     }
 
-//    for (auto&& x: this->FileContents) std::cout << x << std::endl;
     if (debug){
         auto t1 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dt = t1 - t0;
@@ -138,22 +158,19 @@ void ZipParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Im
     if (this->FileContents.size()==0) this->BuildFileList();
     auto t0 = std::chrono::high_resolution_clock::now();
 
-    std::string imageLoc = this->ImageNames[EventID][FrameName];
+    int err = 0;
 
-    auto t02 = std::chrono::high_resolution_clock::now();
-    /* Locate the entry, then retrieve data into buffer */
-    mz_zip_reader_locate_entry(this->zip_reader, imageLoc.c_str(), 1);
-    if (debug){
-        auto t12 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt2 = t12 - t02;
-        std::cout << "GetImage->locate_entry: " << dt2.count() << std::endl;
-    }
+    /* Go to the location of the data in the zip file, get file info. */
+    mz_zip_file *file_info;
+    mz_zip_goto_entry(this->zip_handle, this->ImageLocs[EventID][FrameName]);
+    mz_zip_entry_get_info(this->zip_handle, &file_info);
 
     auto t03 = std::chrono::high_resolution_clock::now();
-
-    int32_t buf_size = (int32_t) mz_zip_reader_entry_save_buffer_length(zip_reader);
-    char *buf = new char[buf_size];
-    int32_t err = mz_zip_reader_entry_save_buffer(zip_reader, buf, buf_size);
+    /* Store data from file in buffer */
+    char buf[file_info->uncompressed_size];
+    mz_zip_entry_read_open(this->zip_handle, 0, NULL);
+    mz_zip_entry_read(this->zip_handle, buf, file_info->uncompressed_size);
+    mz_zip_entry_close(this->zip_handle);
 
     if (debug){
         auto t13 = std::chrono::high_resolution_clock::now();
@@ -161,23 +178,9 @@ void ZipParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Im
         std::cout << "GetImage->save_to_buffer: " << dt3.count() << std::endl;
     }
 
-    if (err){
-        std::cout << "Could not retrieve image data from zip file; exiting..." << std::endl;
-    }
-
-    auto t04 = std::chrono::high_resolution_clock::now();
-
     /* Reinterpret buffer as OpenCV Mat object */
-    cv::Mat rawData(1, buf_size, CV_8U, (void*) buf);
+    cv::Mat rawData(1, file_info->uncompressed_size, CV_8U, (void*) buf);
     Image = cv::imdecode(rawData, 0);
-
-    if (debug){
-        auto t14 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt4 = t14 - t04;
-        std::cout << "GetImage->imdecode: " << dt4.count() << std::endl;
-    }
-
-    delete buf;
 
     if (debug){
         auto t1 = std::chrono::high_resolution_clock::now();

@@ -20,7 +20,7 @@
 #include <boost/regex.hpp>
 #include <boost/filesystem.hpp>
 
-#define debug true
+#define debug false
 #include <chrono>
 using std::chrono::milliseconds;
 

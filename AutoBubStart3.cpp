@@ -234,12 +234,10 @@ int main(int argc, char** argv)
     //Trainer *TrainC3 = new Trainer(3, EventList, eventDir, imageFormat, imageFolder);
 
 
-    //try {
     #pragma omp parallel for
     for (int icam = 0; icam < numCams; icam++){
         Trainers[icam]->MakeAvgSigmaImage(false);
     }
-    //} catch (...) {
 
     /* Check if the trainers succeeded, in which case StatusCode = 0 */
     bool succeeded = true;

@@ -27,8 +27,6 @@ class AnalyzerUnit{
 
         float calculateEntropyFrame(cv::Mat& );
 
-        Parser *FileParser;
-
     protected:
         /*Event identification and location*/
         std::string ImageDir;
@@ -39,8 +37,7 @@ class AnalyzerUnit{
         std::vector<std::string> CameraFrames;
         int CameraNumber;
 
-
-
+        Parser *FileParser;
 
     public:
         /*Constructor and deconstructor*/

@@ -15,10 +15,18 @@ class ZipParser: public Parser {
     private:
         void *zip_reader;
 
-        int lastImageLoc;
-
         void BuildFileList();
         int SearchForFile(int, int, std::string);
+
+        /* Required by minizip-ng for file access.
+         * The the streams work in the background,
+         * the zip_handle is like a file handle,
+         * we use it in functions to access data.
+         */
+        void *file_stream;
+        void *buff_stream;
+        void *split_stream;
+        void *zip_handle;
 
     protected:
 
@@ -41,6 +49,7 @@ class ZipParser: public Parser {
          *   string: full name of image in zip file
          */
         std::map<std::string, std::map<std::string, std::string> > ImageNames;
+        std::map<std::string, std::map<std::string, int64_t> > ImageLocs;
 };
 
 #endif
