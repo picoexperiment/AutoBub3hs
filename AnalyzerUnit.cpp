@@ -215,7 +215,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
                 }
-                workingFrame = cv::imread(evalImg.c_str());
+                workingFrame = cv::imread(evalImg.c_str(),0);
 
                 cv::absdiff(workingFrame, prevFrame, img_mask0);
 
