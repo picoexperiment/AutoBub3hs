@@ -32,7 +32,7 @@
 
 #include "AnalyzerUnit.hpp"
 #include "AlgorithmTraining/Trainer.hpp"
-#include "PICOFormatWriter/PICOFormatWriterV3.hpp"
+#include "PICOFormatWriter/PICOFormatWriterV4.hpp"
 #include "bubble/bubble.hpp"
 #include "common/UtilityFunctions.hpp"
 
@@ -80,6 +80,7 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
         AnalyzerCGeneric->ParseAndSortFramesInFolder();
         AnalyzerCGeneric->FindTriggerFrame();
         //cout<<"Trigger Frame: "<<AnalyzerCGeneric->MatTrigFrame<<"\n";
+        //std::cout << actualEventNumber << " " << camera << " " << AnalyzerCGeneric->MatTrigFrame <<  " " << AnalyzerCGeneric->TriggerFrameIdentificationStatus << std::endl;
         if (AnalyzerCGeneric->okToProceed)
         {
 
@@ -129,13 +130,44 @@ int main(int argc, char** argv)
     std::string dataLoc = argv[1];
     std::string run_number = argv[2];
     std::string out_dir = argv[3];
-    std::string mask_dir = argv[4];
 
-    std::string eventDir=dataLoc+run_number+"/";
+    std::string mask_dir = "";
+    if (argc>=5){ mask_dir = argv[4]; }
 
+    std::string data_series = "";
+    if (argc>=6){ data_series = argv[5]; }
+
+    std::string eventDir = dataLoc + run_number + "/";
+
+    /* The following variables deal with the different ways that images have been
+     * saved in different experiments.
+     */
+    std::string imageFormat;
+    std::string imageFolder;
+    int frameOffset;
+    int numCams;
+    if (data_series=="01l-21" | data_series=="2l-16"){
+            imageFormat = "cam%dimage %u.bmp";
+            imageFolder = "/";
+            frameOffset = 0;
+            numCams = 2;
+    }
+    else if (data_series=="40l-19"){
+            imageFormat = "cam%d_image%u.png";
+            imageFolder = "/Images/";
+            frameOffset = 30;
+            if (run_number >= "20200713_7"){ numCams = 4; }
+            else { numCams = 2; }
+    }
+    else {
+            imageFormat = "cam%d_image%u.png";
+            imageFolder = "/Images/";
+            frameOffset = 30;
+            numCams = 4;
+    }
 
     /*I anticipate the object to become large with many bubbles, so I wanted it on the heap*/
-    OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+    OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset, numCams);
     PICO60Output->writeHeader();
 
     /*Construct list of events*/
@@ -151,10 +183,7 @@ int main(int argc, char** argv)
     catch (...)
     {
         std::cout<<"Failed to read the images from the run. Autobub cannot continue.\n";
-        PICO60Output->stageCameraOutputError(0,-5, -1);
-        PICO60Output->stageCameraOutputError(1,-5, -1);
-        PICO60Output->stageCameraOutputError(2,-5, -1); //cam2,3 absent in data now
-        PICO60Output->stageCameraOutputError(3,-5, -1);
+        for (int icam = 0; icam < numCams; icam++){ PICO60Output->stageCameraOutputError(icam, -5, -1); }
         PICO60Output->writeCameraOutput();
         return -5;
     }
@@ -164,51 +193,65 @@ int main(int argc, char** argv)
     /*Event list is now constructed*/
 
 
+
+
     /*Learn Mode
      *Train on a given set of images for background subtract
      */
     printf("**Starting training. AutoBub is in learn mode**\n");
-    Trainer *TrainC0 = new Trainer(0, EventList, eventDir);
-    Trainer *TrainC1 = new Trainer(1, EventList, eventDir);
-    Trainer *TrainC2 = new Trainer(2, EventList, eventDir); //cam2,3 absent in data now
-    Trainer *TrainC3 = new Trainer(3, EventList, eventDir);
+    std::vector<Trainer*> Trainers;
+    for (int icam = 0; icam < numCams; icam++){
+        Trainers.push_back(new Trainer(icam, EventList, eventDir, imageFormat, imageFolder));
+    }
+    //Trainer *TrainC1 = new Trainer(1, EventList, eventDir, imageFormat, imageFolder);
+    //Trainer *TrainC2 = new Trainer(2, EventList, eventDir, imageFormat, imageFolder);
+    //Trainer *TrainC3 = new Trainer(3, EventList, eventDir, imageFormat, imageFolder);
 
-    //Trainer* trainers [4] = {TrainC0, TrainC1, TrainC2, TrainC3};
 
+    //try {
+    #pragma omp parallel for
+    for (int icam = 0; icam < numCams; icam++){
+        Trainers[icam]->MakeAvgSigmaImage(false);
+    }
+    //} catch (...) {
 
-    try {
-        TrainC0->MakeAvgSigmaImage(false);
-        TrainC1->MakeAvgSigmaImage(false);
-        TrainC2->MakeAvgSigmaImage(false); //cam2,3 absent in data now
-        TrainC3->MakeAvgSigmaImage(false);
+    /* Check if the trainers succeeded, in which case StatusCode = 0 */
+    bool succeeded = true;
+    for (int icam = 0; icam < numCams; icam++){
+        if (Trainers[icam]->StatusCode){ succeeded = false; }
+    }
 
-    } catch (...) {
+    if (!succeeded){
         std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
         for (int evi=0; evi<EventList.size(); evi++){
             int actualEventNumber = atoi(EventList[evi].c_str());
-            PICO60Output->stageCameraOutputError(0,-7, actualEventNumber);
-            PICO60Output->stageCameraOutputError(1,-7, actualEventNumber);
-            PICO60Output->stageCameraOutputError(2,-7, actualEventNumber); //cam 2,3 absent in data now
-            PICO60Output->stageCameraOutputError(3,-7, actualEventNumber);
+            for (int icam = 0; icam < numCams; icam++){
+                PICO60Output->stageCameraOutputError(icam, -7, actualEventNumber);
+            }
             PICO60Output->writeCameraOutput();
         }
         return -7;
     }
+    //}
 
 
     printf("***Training complete. AutoBub is now in detect mode***\n");
     // Create a separate writer per event
-    //delete PICO60Output;
+    delete PICO60Output;
 
 
     /*Detect mode
      *Iterate through all the events in the list and detect bubbles in them one by one
      *A seprate procedure will store them to a file at the end
      */
-//    #pragma omp parallel for ordered schedule(static, 1)
+    int num_threads_total = omp_get_max_threads();
+    int num_threads_cam = 4;
+    int num_threads_evs = int(num_threads_total / num_threads_cam);
+    std::cout << "Total threads: " << num_threads_total << std::endl;
+    #pragma omp parallel for ordered schedule(static, 1) num_threads(num_threads_total)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
-        //OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number);
+        OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset, numCams);
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
@@ -216,50 +259,48 @@ int main(int argc, char** argv)
         printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
 
-
         /* ***************************
          * ***** Camera Operations ******
          ********************************/
         //#pragma omp ordered
+        std::vector<AnalyzerUnit*> Analyzers;
+        for (int icam = 0; icam < numCams; icam++){
+            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam],mask_dir));
+            AnyCamAnalysis(EventList[evi], imageDir, icam, true, &Trainers[icam], &PICO60Output, out_dir, actualEventNumber, &Analyzers[icam]);
+        }
+        /*
         AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0, mask_dir);
         AnalyzerUnit *AnalyzerC1 = new L3Localizer(EventList[evi], imageDir, 1, true, &TrainC1, mask_dir);
-        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir); // cam2,3 absent in data now
+        AnalyzerUnit *AnalyzerC2 = new L3Localizer(EventList[evi], imageDir, 2, true, &TrainC2, mask_dir);
         AnalyzerUnit *AnalyzerC3 = new L3Localizer(EventList[evi], imageDir, 3, true, &TrainC3, mask_dir);
-        #pragma omp parallel
-        {
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
-            }
-            #pragma omp single nowait
-            {
-                AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
-            }
-        }
+
+        AnyCamAnalysis(EventList[evi], imageDir, 0, true, &TrainC0, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC0);
+        AnyCamAnalysis(EventList[evi], imageDir, 1, true, &TrainC1, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC1);
+        AnyCamAnalysis(EventList[evi], imageDir, 2, true, &TrainC2, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC2); //cam 2,3 absent in data now
+        AnyCamAnalysis(EventList[evi], imageDir, 3, true, &TrainC3, &PICO60Output, out_dir, actualEventNumber, &AnalyzerC3); //cam 2,3 absent in data now
+
+        */
 
         /*Write and commit output after each iteration, so in the event of a crash, its not lost*/
-        #pragma omp barrier
-        PICO60Output->writeCameraOutput();
+        #pragma omp ordered
+        {
+           PICO60Output->writeCameraOutput();
+        }
 
-        delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
+//        delete AnalyzerC0, AnalyzerC1, AnalyzerC2, AnalyzerC3; //cam 2,3 absent in data now
+        delete PICO60Output;
+        for (int icam = 0; icam < numCams; icam++) delete Analyzers[icam];
     }
 
     printf("run complete.\n");
 
     /*GC*/
-    delete TrainC0;
-    delete TrainC1;
-    delete TrainC2; //cam2,3 absent in data now
-    delete TrainC3;
-    delete PICO60Output; //uncomment this if there is a single writer
+    for (int icam = 0; icam < numCams; icam++) delete Trainers[icam];
+    //delete TrainC0;
+    //delete TrainC1;
+    //delete TrainC2; //cam2,3 absent in data now
+    //delete TrainC3;
+//    delete PICO60Output; //uncomment this if there is a single writer
 
 
     printf("AutoBub done analyzing this run. Thank you.\n");

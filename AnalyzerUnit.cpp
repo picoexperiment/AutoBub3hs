@@ -2,6 +2,7 @@
 #include <string>
 #include <dirent.h>
 #include <iostream>
+#include <functional>
 
 
 #include <opencv2/opencv.hpp>
@@ -12,6 +13,7 @@
 #include "LBP/LBPUser.hpp"
 #include "AlgorithmTraining/Trainer.hpp"
 #include "common/UtilityFunctions.hpp"
+#include "FrameSorter.hpp"
 
 
 AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
@@ -22,7 +24,8 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
     this->CameraNumber=CameraNumber;
     this->EventID=EventID;
 
-    this->TrainedData = *TrainedData;
+    this->TrainedData = new Trainer(**TrainedData);
+    this->MatTrigFrame = 0;
 
 }
 
@@ -32,6 +35,7 @@ AnalyzerUnit::~AnalyzerUnit(void ){
     for (int i=0; i<this->BubbleList.size(); i++){
         delete this->BubbleList[i];
     }
+    if (this->TrainedData) delete this->TrainedData;
 }
 
 
@@ -50,7 +54,11 @@ AnalyzerUnit::~AnalyzerUnit(void ){
 void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 {
 
-    std::string searchPattern = "cam"+std::to_string(this->CameraNumber)+"_image";
+    //std::string searchPattern = "cam"+std::to_string(this->CameraNumber)+"_image";
+
+    char tmpSearchPattern[30];
+    sprintf(tmpSearchPattern, TrainedData->SearchPattern.c_str(), this->CameraNumber);
+    std::string searchPattern = tmpSearchPattern;
 
     /*Function to Generate File Lists*/
     {
@@ -77,8 +85,8 @@ void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 
 
             closedir (dir);
-
-            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSortFunc);
+            FrameSorter frameSorter(this->TrainedData->ImageFormat);
+            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSorter);
 
         }
         else
@@ -105,7 +113,7 @@ void AnalyzerUnit::ParseAndSortFramesInFolder( void )
 void AnalyzerUnit::FindTriggerFrame(void ){
 
     /*First, check if the sequence of events is malformed*/
-    if (this->CameraFrames.size()<20){
+    if (this->CameraFrames.size()<5){
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
@@ -113,7 +121,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
 
     cv::Mat workingFrame, img_mask0, img_mask1;
-    cv::Mat firstFrame, prevFrame;
+    cv::Mat prevFrame;
 
     /*Static variable to store the threshold entropy WHERE USED??*/
     float entropyThreshold;
@@ -129,15 +137,16 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
-    if(getFilesize(refImg)<MIN_IMAGE_SIZE){
+    if(getFilesize(refImg)<50000){
         std::cout << "Size of " << refImg << " is too small. Skipping this camera for this event." << std::endl;
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
     }
 
-    firstFrame = cv::imread(refImg.c_str(),0);
-    prevFrame = firstFrame;
+    prevFrame = cv::imread(refImg.c_str(),0);
+    /* GaussianBlur can help with noisy images */
+    //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
 
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
@@ -149,15 +158,18 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         std::string evalImg = this->ImageDir + this->CameraFrames[i];
 
         /*Check if image is malformed. If yes, then stop*/
-        if(getFilesize(evalImg)<MIN_IMAGE_SIZE){
+        if(getFilesize(evalImg)<50000){
             std::cout << "Size of " << evalImg << " is too small. Skipping this camera for this event." << std::endl;
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
         }
         workingFrame = cv::imread(evalImg.c_str(),0);
+        /* GaussianBlur can help with noisy images */
+        //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
+
         /*BackgroundSubtract*/
-        cv::absdiff(workingFrame, /*TrainedData->TrainedAvgImage*/prevFrame/*firstFrame*/, img_mask0);
+        cv::absdiff(workingFrame, /*TrainedData->TrainedAvgImage*/prevFrame/*comparisonFrame*/, img_mask0);
         img_mask1 = img_mask0 - 6*this->TrainedData->TrainedSigmaImage;
 
         /*Find LBP and then calculate Entropy*/
@@ -189,9 +201,34 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
         /*Nothing works better than manual entropy settings. :-(*/
         if (singleEntropy > entropyThreshold and i > this->minEvalFrameNumber) {
-            this->TriggerFrameIdentificationStatus = 0;
-            this->MatTrigFrame = i;
-            break;
+            //std::cout << this->EventID << " " << this->CameraFrames[i] << " " << singleEntropy << std::endl;
+            /* LED flicker check: check if the following frame is also
+             * above the entropy threshold. Entropy for valid events grows,
+             * while flicker events have one frame above threshold then goes
+             * back below threshold.
+             */
+            if (i != this->CameraFrames.size()-1){
+                std::string evalImg = this->ImageDir + this->CameraFrames[i+1];
+
+                if(getFilesize(evalImg)<50000){
+                    this->okToProceed=false;
+                    this->TriggerFrameIdentificationStatus = -9;
+                    return;
+                }
+                workingFrame = cv::imread(evalImg.c_str());
+
+                cv::absdiff(workingFrame, prevFrame, img_mask0);
+
+                singleEntropy = this->calculateEntropyFrame(img_mask0);
+
+                if (singleEntropy > 2/3 * entropyThreshold){
+                    this->TriggerFrameIdentificationStatus = 0;
+                    this->MatTrigFrame = i;
+                    break;
+                }
+
+            }
+
         }
         prevFrame = workingFrame;
     }
@@ -210,7 +247,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 /*This function calculates ImageEntropy
 based on CPU routines. It converts the image to
 BW first. This is assumed that the image frames are
-subtracted already 
+subtracted already
 2021 11 19 - Colin M
     Moved here for implicit thread safety.
 */

@@ -25,6 +25,7 @@ class OutputWriter{
         std::ofstream OutFile;
         std::stringstream _StreamOutput;
 
+        int NumCams;
 
     protected:
 
@@ -41,14 +42,11 @@ class OutputWriter{
             BubbleData();
         };
         /*direct access to the trained data*/
-        BubbleData BubbleData0;
-        BubbleData BubbleData1;
-        BubbleData BubbleData2;
-        BubbleData BubbleData3;
+        std::vector<BubbleData*> AllBubbleData;
 
 
         /*Trainer instance initilized with the camera number*/
-        OutputWriter(std::string, std::string, int );
+        OutputWriter(std::string, std::string, int, int );
         ~OutputWriter(void );
 
         /*Compute the mean and std*/

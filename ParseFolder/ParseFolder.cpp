@@ -77,21 +77,21 @@ void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList
             //if ( hFile->d_type == DT_DIR )
             //    //printf( "found an .bmp file: %s\n", hFile->d_name );
             //    EventList.push_back(std::string(hFile->d_name)); // originally it was
-	    // 
-	    // But we need the following to temporarily solve parsing issue  
-	    char folder[200];
-	    strcpy(folder,RunFolder);
-	    char* currentPath = strcat(folder,hFile->d_name);
-	    struct stat statbuf;
-	    if(stat(currentPath, &statbuf) == -1)
-	    {
-		perror("stat");
-		exit(-1);
-	    }
+            //
+            // But we need the following to temporarily solve parsing issue
+            char folder[200];
+            strcpy(folder,RunFolder);
+            char* currentPath = strcat(folder,hFile->d_name);
+            struct stat statbuf;
+            if(stat(currentPath, &statbuf) == -1)
+            {
+                perror("stat");
+                exit(-1);
+            }
             if(S_ISDIR(statbuf.st_mode))
-	    {
-		EventList.push_back(std::string(hFile->d_name));
-	    }		
+            {
+                EventList.push_back(std::string(hFile->d_name));
+            }
         }
 
 
