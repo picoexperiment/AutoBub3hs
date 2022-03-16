@@ -213,7 +213,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
 
-
+    //this->nonStopMode=false;
 
     /*Construct the frame differences and LBPImage Frames*/
     cv::Mat NewFrameDiffTrig, overTheSigma;
@@ -224,6 +224,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0_TrigFrame.png", this->triggerFrame);
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_00_AvgImage.png", this->TrainedData->TrainedAvgImage);
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png", NewFrameDiffTrig);
+//        std::cout << "DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png" << std::endl;
     }
 
     overTheSigma = NewFrameDiffTrig - 6*this->TrainedData->TrainedSigmaImage;
@@ -246,30 +247,55 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
+    if (!this->nonStopMode) std::cout << contours.size() << std::endl;
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
     std::vector<cv::Rect> minRect( contours.size() );
 
     int BoxArea=0;
+    int largestBoxArea = 0;
     /*Generate the ellipses and rectangles for each contours*/
     for( int i = 0; i < contours.size(); i++ ) {
+        for (int jj = 0; !this->nonStopMode && jj < contours[i].size(); jj++) std::cout << contours[i][jj].x << "," << contours[i][jj].y << std::endl;
         minRect[i] = cv::boundingRect( contours[i]);
         //minAreaRect[i] = cv::minAreaRect(contours[i] );
-
         BoxArea = minRect[i].width*minRect[i].height;
-        if (BoxArea>10){
+        if (largestBoxArea < BoxArea) largestBoxArea = BoxArea;
+    }
+    for( int i = 0; i < contours.size(); i++ ) {
+        BoxArea = minRect[i].width*minRect[i].height;
+    
+        if (BoxArea>10 || BoxArea >= largestBoxArea){
             //std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
-            cv::rectangle(this->presentationFrame, minRect[i], this->color_red,1,8,0);
+            cv::rectangle(this->presentationFrame, minRect[i], cv::Scalar( 255,255,255)/*this->color_red*/,1,8,0);
             this->bubbleRects.push_back(minRect[i]);
 
             BubbleImageFrame _thisBubbleFrame;
             _thisBubbleFrame.ContArea = cv::contourArea(contours[i]);
-            _thisBubbleFrame.ContRadius = sqrt(_thisBubbleFrame.ContArea/3.14159);
             _thisBubbleFrame.newPosition = minRect[i];
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
-            _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
-                                                        _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+            _thisBubbleFrame.ContRadius = sqrt(_thisBubbleFrame.ContArea/3.14159);
+            if (contours[i].size()>2){
+                _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
+                                                            _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+            }
+            else if (contours[i].size()==2){
+                _thisBubbleFrame.MassCentres = cv::Point2f( (contours[i][0].x + contours[i][1].x)/2. ,
+                                                            (contours[i][0].y + contours[i][1].y)/2.);
+            }
+            else{
+                _thisBubbleFrame.MassCentres = cv::Point2f( contours[i][0].x, contours[i][0].y );
+            }
+            if (!this->nonStopMode){
+                std::cout << "X: " << _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 << " Y: " << _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m00: " << _thisBubbleFrame.moments.m00 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m10: " << _thisBubbleFrame.moments.m10 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m01: " << _thisBubbleFrame.moments.m01 << std::endl;
+                std::cout << "_thisBubbleFrame.ContArea: " << _thisBubbleFrame.ContArea << std::endl;
+                std::cout << "_thisBubbleFrame.ContRadius: " << _thisBubbleFrame.ContRadius << std::endl;
+                std::cout << "_thisBubbleFrame.MassCentres: " << _thisBubbleFrame.MassCentres.x << "," << _thisBubbleFrame.MassCentres.y << std::endl;
+            }
 
             //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
@@ -335,7 +361,6 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
     //showHistogramImage(bubMinusShadow);
     float ImageDynamicRange = ImageDynamicRangeSum(bubMinusShadow,60,200);
     if (ImageDynamicRange==0.0) return;
-
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
@@ -647,7 +672,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
             this->okToProceed=false;
             break;
         }
-        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < 900000) {
+        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < MIN_IMAGE_SIZE) {
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -10;
             std::cout<<"Failed analyzing event at: "<<this->ImageDir<<this->CameraFrames[i]<<"\n";

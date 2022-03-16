@@ -119,9 +119,9 @@ int main(int argc, char** argv)
 
     printf("This is AutoBub v3, the automatic unified bubble finder code for all chambers\n");
 
-    if (argc < 3)
+    if (argc < 5)
     {
-        printf("Not enough parameters.\nUsage: abub <location of data> <run number> <directory for output file>\nEg: abub /coupp/data/30l-13/ 20140501_0 /home/coupp/recon/\n");
+        printf("Not enough parameters.\nUsage: abub <location of data> <run number> <directory for output file> <directory with camera masks>\nEg: abub /coupp/data/30l-13/ 20140501_0 /home/coupp/recon/ ./cam_masks/\n");
         printf("Note the trailing slashes.\n");
         return -1;
     }
@@ -140,12 +140,12 @@ int main(int argc, char** argv)
 
     /*Construct list of events*/
     std::vector<std::string> EventList;
-    int* EVstatuscode = 0;
+    int EVstatuscode = 0;
 
     try
     {
         GetEventDirLists(eventDir.c_str(), EventList, EVstatuscode);
-
+        if (EVstatuscode != 0) throw "Failed to read directory";
     /*Crash handler at the begining of the program - writes -5 if the folder could not be read*/
     }
     catch (...)
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
-
+//if (evi != 94) continue;
         printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
 

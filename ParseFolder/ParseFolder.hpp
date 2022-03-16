@@ -18,6 +18,6 @@
 /*Decalarions*/
 
 void GetFileLists(const char*, std::vector<std::string>& , int*, const char* );
-void GetEventDirLists(const char*, std::vector<std::string>& , int* );
+void GetEventDirLists(const char*, std::vector<std::string>& , int& );
 
 #endif
