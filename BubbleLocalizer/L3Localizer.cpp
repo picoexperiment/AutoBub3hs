@@ -213,7 +213,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
 
-
+    this->nonStopMode = true;
 
     /*Construct the frame differences and LBPImage Frames*/
     cv::Mat NewFrameDiffTrig, overTheSigma;
@@ -260,7 +260,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
         BoxArea = minRect[i].width*minRect[i].height;
         if (BoxArea>10){
             //std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
-            cv::rectangle(this->presentationFrame, minRect[i], this->color_red,1,8,0);
+            cv::rectangle(this->presentationFrame, minRect[i], cv::Scalar( 255,255,255)/*this->color_red*/,1,8,0);
             this->bubbleRects.push_back(minRect[i]);
 
             BubbleImageFrame _thisBubbleFrame;

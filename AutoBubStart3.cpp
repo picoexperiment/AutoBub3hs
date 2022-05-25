@@ -131,7 +131,9 @@ int main(int argc, char** argv)
     std::string run_number = argv[2];
     std::string out_dir = argv[3];
 
-    std::string mask_dir = "";
+    std::string this_path = argv[0];
+    std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
+    std::string mask_dir = abub_dir+"cam_masks/";
     if (argc>=5){ mask_dir = argv[4]; }
 
     std::string data_series = "";
