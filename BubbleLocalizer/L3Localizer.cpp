@@ -213,7 +213,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
 
-    this->nonStopMode=false;
+    //this->nonStopMode=false;
 
     /*Construct the frame differences and LBPImage Frames*/
     cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma;
@@ -270,7 +270,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
         BoxArea = minRect[i].width*minRect[i].height;
     
         if (BoxArea>10 || BoxArea >= largestBoxArea){
-            std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
+            if (!this->nonStopMode) std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
             cv::rectangle(this->presentationFrame, minRect[i], cv::Scalar( 255,255,255)/*this->color_red*/,1,8,0);
             this->bubbleRects.push_back(minRect[i]);
 
@@ -308,7 +308,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
             //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
                 //if not, we continue and check next bubble without adding it to Bubblelist
-                std::cout << "Skipping genesis bubble..." << std::endl;
+                if (!this->nonStopMode) std::cout << "Skipping genesis bubble..." << std::endl;
                 continue;
             }
 
@@ -402,7 +402,6 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
             //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
-            std::cout << "line 405" << std::endl;
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
                 //if not, we continue and check next bubble without adding it to Bubblelist
                 continue;
@@ -505,7 +504,6 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
             //Checking if the feature coordinates are within acceptable area (cam_mask)
-            std::cout << "line 508" << std::endl;
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
                 //if not, we continue and check next bubble without adding it to Bubblelist
                 continue;
@@ -613,7 +611,6 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
             //Checking if the coordinates of the feature are within acceptable area (cam_mask)
-            std::cout << "line 616" << std::endl;
             if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
                 //if not, we continue and check next bubble without adding it to Bubblelist
                 continue;
@@ -749,7 +746,6 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
 
     int xpix = genesis_coords->x+genesis_coords->width/2.;
     int ypix = genesis_coords->y+genesis_coords->height/2;
-    std::cout << "xpix: " << xpix << "; ypix: " << ypix << std::endl;
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
     std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
     cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
@@ -770,7 +766,7 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
 
     } else {
 
-        std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
+        if (!this->nonStopMode) std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
         return false; //It lies outside of the acceptable range
     }
 
