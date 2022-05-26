@@ -251,7 +251,7 @@ int main(int argc, char** argv)
     int num_threads_cam = 4;
     int num_threads_evs = int(num_threads_total / num_threads_cam);
     std::cout << "Total threads: " << num_threads_total << std::endl;
-    #pragma omp parallel for ordered schedule(static, 1) num_threads(num_threads_total)
+    //#pragma omp parallel for ordered schedule(static, 1) num_threads(num_threads_total)
     for (int evi = 0; evi < EventList.size(); evi++)
     {
         OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset, numCams);
