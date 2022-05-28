@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 
     if (argc < 5)
     {
-        printf("Not enough parameters.\nUsage: abub <location of data> <run number> <directory for output file> <directory with camera masks> [optional: data_series]\nEg: abub /coupp/data/30l-13/ 20140501_0 /home/coupp/recon/ ./cam_masks/ \"40l-19\"\n");
+        printf("Not enough parameters.\nUsage: abub3hs <location of data> <run number> <directory for output file> <directory with camera masks> [optional: data_series]\nEg: abub3hs /scratch/$USER/ 20200925_1 /project/rrg-kenclark/$USER/abub_out/ ./cam_masks/ 40l-19\n");
         printf("Note the trailing slashes.\n");
         return -1;
     }
@@ -151,7 +151,6 @@ int main(int argc, char** argv)
             imageFolder = "/";
             frameOffset = 0;
             numCams = 2;
-            cout << "here 1" << std::endl;
     }
     else if (data_series=="40l-19"){
             imageFormat = "cam%d_image%u.png";
@@ -159,14 +158,12 @@ int main(int argc, char** argv)
             frameOffset = 30;
             if (run_number >= "20200713_7"){ numCams = 4; }
             else { numCams = 2; }
-            cout << "here 2" << std::endl;
     }
     else {
             imageFormat = "cam%d_image%u.png";
             imageFolder = "/Images/";
             frameOffset = 30;
             numCams = 4;
-            cout << "here 3" << std::endl;
     }
 
     /*I anticipate the object to become large with many bubbles, so I wanted it on the heap*/
