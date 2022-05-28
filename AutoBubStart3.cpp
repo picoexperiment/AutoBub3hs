@@ -137,7 +137,7 @@ int main(int argc, char** argv)
     std::string data_series = "";
     if (argc>=6){ data_series = argv[5]; }
 
-    std::string eventDir = dataLoc + run_number + "/";
+    std::string eventDir = dataLoc + "/" + run_number + "/";
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.

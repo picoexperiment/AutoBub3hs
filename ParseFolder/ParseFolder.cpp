@@ -102,6 +102,7 @@ void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList
     {
         /* could not open directory */
         //perror ("");
+        std::cout << "Could not open directory: " << RunFolder << std::endl;
         statuscode = 1;
     }
 
