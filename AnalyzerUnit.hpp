@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include "bubble/bubble.hpp"
 
+#define MIN_IMAGE_SIZE 100000
 
 class AnalyzerUnit{
 

@@ -46,7 +46,7 @@ class L3Localizer: public AnalyzerUnit{
 
         /*Matrices to store the frames.*/
         cv::Mat presentationFrame;
-        cv::Mat ComparisonFrame, triggerFrame;
+        cv::Mat ComparisonFrame, triggerFrame, preTrigFrame;
 
 
         cv::Mat PostTrigWorkingFrame;

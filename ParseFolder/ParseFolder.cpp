@@ -14,8 +14,9 @@
 #include <stdio.h>
 #include <vector>
 #include <string.h>
-#include <sys/types.h> //.... added
-#include <sys/stat.h>  //....
+#include <sys/types.h> //.... added 
+#include <sys/stat.h>  //.... 
+#include <iostream>
 
 
 /*Function to Generate File Lists*/
@@ -56,7 +57,7 @@ void GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, i
 
 
 /*Function to Generate File Lists*/
-void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList, int* statuscode)
+void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList, int& statuscode)
 {
     DIR *dir  = opendir (RunFolder) ;
     if (dir)
@@ -101,7 +102,8 @@ void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList
     {
         /* could not open directory */
         //perror ("");
-        *statuscode = 1;
+        std::cout << "Could not open directory: " << RunFolder << std::endl;
+        statuscode = 1;
     }
 
 }

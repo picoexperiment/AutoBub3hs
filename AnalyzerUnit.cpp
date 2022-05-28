@@ -121,13 +121,14 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
 
     cv::Mat workingFrame, img_mask0, img_mask1;
-    cv::Mat comparisonFrame;
+    cv::Mat prevFrame;
 
     /*Static variable to store the threshold entropy WHERE USED??*/
     float entropyThreshold;
     //if(this->CameraNumber==2) entropyThreshold = 0.0009;
     //else entropyThreshold = 0.0003;
-    entropyThreshold = 0.0003;
+    entropyThreshold = 0;
+    
 
     /*Variable to store the current entropy in*/
     float singleEntropy;
@@ -137,12 +138,13 @@ void AnalyzerUnit::FindTriggerFrame(void ){
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
     if(getFilesize(refImg)<50000){
+        std::cout << "Size of " << refImg << " is too small. Skipping this camera for this event." << std::endl;
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
     }
 
-    comparisonFrame = cv::imread(refImg.c_str());
+    prevFrame = cv::imread(refImg.c_str(),0);
     /* GaussianBlur can help with noisy images */
     //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
 
@@ -157,26 +159,31 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
         /*Check if image is malformed. If yes, then stop*/
         if(getFilesize(evalImg)<50000){
+            std::cout << "Size of " << evalImg << " is too small. Skipping this camera for this event." << std::endl;
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
         }
-        workingFrame = cv::imread(evalImg.c_str());
+        workingFrame = cv::imread(evalImg.c_str(),0);
         /* GaussianBlur can help with noisy images */
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
         /*BackgroundSubtract*/
-        cv::absdiff(workingFrame, comparisonFrame, img_mask0);
+        cv::absdiff(workingFrame, /*TrainedData->TrainedAvgImage*/prevFrame/*comparisonFrame*/, img_mask0);
+        img_mask1 = img_mask0 - 6*this->TrainedData->TrainedSigmaImage;
 
         /*Find LBP and then calculate Entropy*/
         //img_mask1 = lbpImage(img_mask0);
-        singleEntropy = this->calculateEntropyFrame(img_mask0);
+        cv::Mat debug_mask;
+        cv::threshold(img_mask0, debug_mask, 6, 255, THRESH_BINARY);
+        singleEntropy = this->calculateEntropyFrame(img_mask1);
 
         /* ****************
          * Debug Point here
          * **************** */
-        //debugShow(img_mask1);
         //std::cout<<"Entropy of BkgSub "<<i+30<<" image: "<<singleEntropy<<"\n";
+//        debugShow(debug_mask);
+        imwrite("/home/carl/test/abub_debug/"+this->CameraFrames[i], debug_mask);
 
 
         /*Calculate entropy of ROI*/
@@ -208,9 +215,9 @@ void AnalyzerUnit::FindTriggerFrame(void ){
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
                 }
-                workingFrame = cv::imread(evalImg.c_str());
+                workingFrame = cv::imread(evalImg.c_str(),0);
 
-                cv::absdiff(workingFrame, comparisonFrame, img_mask0);
+                cv::absdiff(workingFrame, prevFrame, img_mask0);
 
                 singleEntropy = this->calculateEntropyFrame(img_mask0);
 
@@ -223,6 +230,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
             }
 
         }
+        prevFrame = workingFrame;
     }
 
 
