@@ -5,6 +5,9 @@
 #include <string>
 
 #include <opencv2/opencv.hpp>
+#include "../ParseFolder/Parser.hpp"
+#include "../ParseFolder/RawParser.hpp"
+#include "../ParseFolder/ZipParser.hpp"
 
 
 class Trainer{
@@ -20,6 +23,8 @@ class Trainer{
         int camera;
         std::string EventDir;
         std::string ImageFolder;
+
+        Parser* FileParser;
 
     protected:
 
@@ -45,7 +50,7 @@ class Trainer{
         std::vector<int> TrainingSequence {0, 1};
 
         /*Trainer instance initilized with the camera number*/
-        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string );
+        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string, Parser* );
         Trainer(const Trainer &other_trainer);
         ~Trainer(void );
 

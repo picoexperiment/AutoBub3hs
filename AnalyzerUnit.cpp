@@ -16,7 +16,7 @@
 #include "FrameSorter.hpp"
 
 
-AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir)
+AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int CameraNumber, Trainer** TrainedData, std::string MaskDir, Parser* Parser)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->ImageDir=ImageDir;
@@ -26,7 +26,9 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
 
     this->TrainedData = new Trainer(**TrainedData);
     this->MatTrigFrame = 0;
+    this->FileParser = Parser;
 
+    this->FileParser->ParseAndSortFramesInFolder(this->EventID, this->CameraNumber, this->CameraFrames);
 }
 
 AnalyzerUnit::~AnalyzerUnit(void ){
@@ -36,6 +38,8 @@ AnalyzerUnit::~AnalyzerUnit(void ){
         delete this->BubbleList[i];
     }
     if (this->TrainedData) delete this->TrainedData;
+
+    if (this->FileParser) delete this->FileParser;
 }
 
 
@@ -137,14 +141,20 @@ void AnalyzerUnit::FindTriggerFrame(void ){
 
     std::string refImg = this->ImageDir + this->CameraFrames[0];
     //std::cout<<"Ref Image: "<<refImg<<"\n";
+    
+    // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+    /*
     if(getFilesize(refImg)<50000){
         std::cout << "Size of " << refImg << " is too small. Skipping this camera for this event." << std::endl;
         this->okToProceed=false;
         this->TriggerFrameIdentificationStatus = -9;
         return;
     }
+    */
 
-    prevFrame = cv::imread(refImg.c_str(),0);
+//    comparisonFrame = cv::imread(refImg.c_str());
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[0], prevFrame);
+
     /* GaussianBlur can help with noisy images */
     //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
 
@@ -158,13 +168,17 @@ void AnalyzerUnit::FindTriggerFrame(void ){
         std::string evalImg = this->ImageDir + this->CameraFrames[i];
 
         /*Check if image is malformed. If yes, then stop*/
+        // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+        /*
         if(getFilesize(evalImg)<50000){
             std::cout << "Size of " << evalImg << " is too small. Skipping this camera for this event." << std::endl;
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -9;
             return;
-        }
-        workingFrame = cv::imread(evalImg.c_str(),0);
+        }*/
+        //workingFrame = cv::imread(evalImg.c_str(), 0);
+        this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
+
         /* GaussianBlur can help with noisy images */
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
@@ -210,12 +224,16 @@ void AnalyzerUnit::FindTriggerFrame(void ){
             if (i != this->CameraFrames.size()-1){
                 std::string evalImg = this->ImageDir + this->CameraFrames[i+1];
 
+                // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+                /*
                 if(getFilesize(evalImg)<50000){
                     this->okToProceed=false;
                     this->TriggerFrameIdentificationStatus = -9;
                     return;
                 }
-                workingFrame = cv::imread(evalImg.c_str(),0);
+                */
+                //workingFrame = cv::imread(evalImg.c_str(), 0);
+                this->FileParser->GetImage(this->EventID, this->CameraFrames[i+1], workingFrame);
 
                 cv::absdiff(workingFrame, prevFrame, img_mask0);
 

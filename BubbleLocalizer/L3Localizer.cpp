@@ -46,7 +46,7 @@
  * ******************************************************************************/
 
 
-L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir)
+L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir, Parser* Parser):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir, Parser)
 {
 
 
@@ -434,7 +434,8 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
     //cv::Mat tempPresentation;
     /*Declare memory / variables that will be needed */
     this->PostTrigWorkingFrame = cv::Mat();
-    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    //this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber], this->PostTrigWorkingFrame);
     //tempPresentation =  this->PostTrigWorkingFrame.clone();
     //cv::cvtColor(tempPresentation, tempPresentation, cv::COLOR_GRAY2BGR);
 
@@ -555,7 +556,8 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
     //cv::Mat tempPresentation;
 
     /*Load the post trig frame*/
-    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber],0);
+    //this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber], this->PostTrigWorkingFrame);
     //tempPresentation =  this->PostTrigWorkingFrame.clone();
     //cv::cvtColor(tempPresentation, tempPresentation, cv::COLOR_GRAY2BGR);
 
@@ -705,11 +707,13 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 //    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
 
-    this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
-    this->preTrigFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame-1],0);
+    //this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame], this->triggerFrame);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame-1], this->preTrigFrame);
     this->presentationFrame = triggerFrame.clone();
     //cv::cvtColor(this->presentationFrame, this->presentationFrame, cv::COLOR_GRAY2BGR);
-    this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
+    //this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[0], this->ComparisonFrame);
 
     /*Run the analyzer series*/
     this->CalculateInitialBubbleParams();
