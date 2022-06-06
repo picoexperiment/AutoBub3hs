@@ -1,18 +1,27 @@
 cmake_minimum_required(VERSION 2.8)
 project( DisplayImage )
 
-add_subdirectory(minizip-ng)
 
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
 find_package( Boost REQUIRED COMPONENTS regex filesystem QUIET )
 
+# Minizip-ng options override - Only compile Zlib support
+set(MZ_COMPAT OFF CACHE BOOL "Enable compatibility layer with minizip
+(non-ng)")
+set(MZ_BZIP2 OFF CACHE BOOL "Compile bzip2 support")
+set(MZ_LIBBSD OFF CACHE BOOL "Compile libbsd support")
+set(MZ_LZMA OFF CACHE BOOL "Compile LZMA support")
+set(MZ_OPENSSL OFF CACHE BOOL "Enable OpenSSL support for encryption")
+set(MZ_PKCRYPT OFF CACHE BOOL "Enable PKWARE support for encryption")
+set(MZ_SIGNING OFF CACHE BOOL "Enable zip signing")
+set(MZ_WZAES OFF CACHE BOOL "Enable WinZIP AES encryption")
+set(MZ_ZSTD OFF CACHE BOOL "Enable ZSTD compression")
+
+add_subdirectory(minizip-ng)
+
 # Required for minizip-ng
 find_package(ZLIB QUIET)
-find_package(BZip2 QUIET)
-find_package(LibLZMA QUIET)
-find_package(ZSTD QUIET)
-find_package(OpenSSL)
 
 set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
