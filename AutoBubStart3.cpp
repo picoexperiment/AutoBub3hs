@@ -41,11 +41,13 @@
 
 #include <omp.h>
 
+#include <boost/program_options.hpp>
+
 const int evalEntropyThresholdFrames = 2;
 std::vector<int> badEvents;
 
 
-
+namespace po = boost::program_options;
 
 
 /*Workaround because fermi grid is using old gcc*/
@@ -116,34 +118,76 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
 
 }
 
+std::string usage(){
+    std::string msg(
+                "Usage: abub3hs [-hz] [-d D] data_dir run_ID out_dir [cam_mask_dir]\n"
+                "Run the AutoBub3hs bubble finding algorithm on a PICO run\n\n"
+                "Optional arguments:\n"
+                "  -h, --help\t\tgive this help message\n"
+                "  -z, --zip\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
+                "  -d, --data_series=D\tname of the data series, e.g. 40l-19, 30l-16, etc.\n\n"
+                "Positional arguments:\n"
+                "  data_dir\tpath to the directory in which the run folder/file is stored\n"
+                "  run_ID\trun ID, formatted as YYYYMMDD_*\n"
+                "  out_dir\tdirectory to write the output file to\n"
+                "  cam_mask_dir\tdirectory containing the camera mask images. If not included, the mask check is skipped\n");
+    return msg;
+}
 
 /*The main autobub code starts here*/
 int main(int argc, char** argv)
 {
+    std::string dataLoc;
+    std::string run_number;
+    std::string out_dir;
+    std::string mask_dir;
+    std::string data_series;
+
+    // generic options
+    po::options_description generic("Arguments");
+    generic.add_options()
+        ("help,h", "produce help message")
+        ("data_series,d", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
+        ("zip,z", "run is stored as a zip file")
+        ("data_dir", po::value<std::string>(&dataLoc), "directory in which the run is stored")
+        ("run_num", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
+        ("out_dir", po::value<std::string>(&out_dir), "directory to write the output file to")
+        ("cam_mask_dir", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
+    ;
+
+    po::positional_options_description p;
+    p.add("data_dir", 1);
+    p.add("run_num", 1);
+    p.add("out_dir", 1);
+    p.add("cam_mask_dir", 1);
+
+    // Parsing argument
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).
+            options(generic).positional(p).run(), vm);
+    po::notify(vm);
+
+    if (vm.count("help") | argc == 1){
+        std::cout << usage() << std::endl;
+        return 1;
+    }
+
+    if (dataLoc.compare("") == 0 | run_number.compare("") == 0 | out_dir.compare("") == 0){
+        std::cerr << "Incorrect number of positional arguments; use \"autobub3hs -h\" to view required arguments" << std::endl;
+        return -1
+    }
 
     printf("This is AutoBub v3, the automatic unified bubble finder code for all chambers\n");
 
-    if (argc < 5)
-    {
-        printf("Not enough parameters.\nUsage: abub3hs <location of data> <run number> <directory for output file> <directory with camera masks> [optional: data_series]\nEg: abub3hs /scratch/$USER/ 20200925_1 /project/rrg-kenclark/$USER/abub_out/ ./cam_masks/ 40l-19\n");
-        printf("Note the trailing slashes.\n");
-        return -1;
-    }
-
-    std::string dataLoc = argv[1];
-    std::string run_number = argv[2];
-    std::string out_dir = argv[3];
-
     std::string this_path = argv[0];
     std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
-    std::string mask_dir = abub_dir+"cam_masks/";
-    if (argc>=5){ mask_dir = argv[4]; }
 
-    std::string data_series = "";
-    if (argc>=6){ data_series = argv[5]; }
+//    std::string data_series = "";
+//    if (argc>=6){ data_series = argv[5]; }
 
     std::string storage_format = "raw";
-    if (argc>=7){ storage_format = argv[6]; }
+    if (vm.count("zip")){ storage_format = "zip"; }
+//    if (argc>=7){ storage_format = argv[6]; }
 
     std::string eventDir = dataLoc + "/" + run_number + "/";
 
