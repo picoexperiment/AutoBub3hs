@@ -5,7 +5,7 @@
 
 
 #include <opencv2/opencv.hpp>
-#include "PICOFormatWriterV3.hpp"
+#include "PICOFormatWriterV4.hpp"
 #include "../bubble/bubble.hpp"
 #include "../common/CommonParameters.h"
 
@@ -17,7 +17,7 @@
 
 
 
-OutputWriter::OutputWriter(std::string OutDir, std::string run_number, int frameOffset)
+OutputWriter::OutputWriter(std::string OutDir, std::string run_number, int frameOffset, int NumCams)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->OutputDir = OutDir;
@@ -27,10 +27,19 @@ OutputWriter::OutputWriter(std::string OutDir, std::string run_number, int frame
     //this->OutFile.open(this->abubOutFilename);
 
     this->frameOffset = frameOffset;
+    this->NumCams = NumCams;
+
+    for (int i=0; i < this->NumCams; i++){
+        this->AllBubbleData.push_back(new BubbleData());
+    }
 
 }
 
-OutputWriter::~OutputWriter(void ) {}
+OutputWriter::~OutputWriter(void ) {
+    for (int i=0; i < this->NumCams; i++){
+        delete this->AllBubbleData[i];
+    }
+}
 
 
 
@@ -93,16 +102,10 @@ void OutputWriter::stageCameraOutput(std::vector<bubble*> BubbleRectIn, int came
     if (BubbleRectIn.size()==0) tempStatus = -1;
     else tempStatus = 0;
 
-    BubbleData* thisBubbleData;
-    if (camera==0) thisBubbleData = &this->BubbleData0;
-    else if (camera==1) thisBubbleData = &this->BubbleData1;
-    else if (camera==2) thisBubbleData = &this->BubbleData2;
-    else if (camera==3) thisBubbleData = &this->BubbleData3;
-
-    thisBubbleData->BubbleObjectData = BubbleRectIn;
-    thisBubbleData->StatusCode = tempStatus;
-    thisBubbleData->frame0 = frame0;
-    thisBubbleData->event = event;
+    this->AllBubbleData[camera]->BubbleObjectData = BubbleRectIn;
+    this->AllBubbleData[camera]->StatusCode = tempStatus;
+    this->AllBubbleData[camera]->frame0 = frame0;
+    this->AllBubbleData[camera]->event = event;
 
 }
 
@@ -119,20 +122,8 @@ void OutputWriter::stageCameraOutput(std::vector<bubble*> BubbleRectIn, int came
 
 void OutputWriter::stageCameraOutputError(int camera, int error, int event){
 
-    if (camera==0) {
-        this->BubbleData0.StatusCode = error;
-        this->BubbleData0.event = event;
-    } else if (camera==1) {
-        this->BubbleData1.StatusCode = error;
-        this->BubbleData1.event = event;
-    } else if (camera==2) {
-        this->BubbleData2.StatusCode = error;
-        this->BubbleData2.event = event;
-    } else if (camera==3) {
-        this->BubbleData3.StatusCode = error;
-        this->BubbleData3.event = event;
-    }
-
+    this->AllBubbleData[camera]->StatusCode = error;
+    this->AllBubbleData[camera]->event = event;
 }
 
 OutputWriter::BubbleData::BubbleData(){};
@@ -145,12 +136,7 @@ void OutputWriter::formEachBubbleOutput(int camera, int &ibubImageStart, int nBu
     this->_StreamOutput.setf(std::ios::fixed, std::ios::floatfield);
 
 
-    BubbleData *workingData;
-
-    if (camera==0) workingData = &this->BubbleData0;
-    else if (camera==1) workingData = &this->BubbleData1;
-    else if (camera==2) workingData = &this->BubbleData2;
-    else if (camera==3) workingData = &this->BubbleData3;
+    BubbleData *workingData = this->AllBubbleData[camera];
 
 
     //int event;
@@ -302,19 +288,13 @@ void OutputWriter::writeCameraOutput(void){
 
     int ibubImageStart = 1;
 
-    /*Calculate nbubtotal. This is not that trivial because all the errors shouldnt get counted*/
-    int nBub0 = this->BubbleData0.StatusCode!=0 ? 0 :  this->BubbleData0.BubbleObjectData.size();
-    int nBub1 = this->BubbleData1.StatusCode!=0 ? 0 :  this->BubbleData1.BubbleObjectData.size();
-    int nBub2 = this->BubbleData2.StatusCode!=0 ? 0 :  this->BubbleData2.BubbleObjectData.size();
-    int nBub3 = this->BubbleData3.StatusCode!=0 ? 0 :  this->BubbleData3.BubbleObjectData.size();
-
-    int nBubTotal = nBub0+nBub1+nBub2+nBub3;
+    int nBubTotal = 0;
+    for (int i = 0; i < this->NumCams; i++){
+        nBubTotal += this->AllBubbleData[i]->StatusCode!=0 ? 0 :  this->AllBubbleData[i]->BubbleObjectData.size();
+    }
 
 
-    this->formEachBubbleOutput(0, ibubImageStart, nBubTotal);
-    this->formEachBubbleOutput(1, ibubImageStart, nBubTotal);
-    this->formEachBubbleOutput(2, ibubImageStart, nBubTotal);
-    this->formEachBubbleOutput(3, ibubImageStart, nBubTotal);
+    for (int i = 0; i < this->NumCams; i++){ this->formEachBubbleOutput(i, ibubImageStart, nBubTotal); }
 
     this->OutFile.open(this->abubOutFilename, std::fstream::out | std::fstream::app);
     this->OutFile<<this->_StreamOutput.rdbuf();

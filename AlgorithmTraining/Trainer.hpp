@@ -5,6 +5,9 @@
 #include <string>
 
 #include <opencv2/opencv.hpp>
+#include "../ParseFolder/Parser.hpp"
+#include "../ParseFolder/RawParser.hpp"
+#include "../ParseFolder/ZipParser.hpp"
 
 
 class Trainer{
@@ -12,18 +15,23 @@ class Trainer{
     private:
         void ParseAndSortFramesInFolder(std::string, std::string );
 
+        float calculateEntropyFrame(cv::Mat& );
+
         std::vector<std::string> CameraFrames;
 
 
         int camera;
-        int StatusCode;
         std::string EventDir;
+        std::string ImageFolder;
 
+        Parser* FileParser;
 
     protected:
 
 
     public:
+        std::string ImageFormat;
+        std::string SearchPattern;
 
         /*direct access to the trained data*/
         cv::Mat TrainedAvgImage;
@@ -33,6 +41,8 @@ class Trainer{
 
         bool isLBPApplied = false;
 
+        int StatusCode;
+
         /*Directory structure required for the training set*/
         std::vector<std::string> EventList;
 
@@ -40,7 +50,8 @@ class Trainer{
         std::vector<int> TrainingSequence {0, 1};
 
         /*Trainer instance initilized with the camera number*/
-        Trainer(int,  std::vector<std::string>, std::string  );
+        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string, Parser* );
+        Trainer(const Trainer &other_trainer);
         ~Trainer(void );
 
         /*Compute the mean and std*/
@@ -50,8 +61,6 @@ class Trainer{
 
 };
 
-/*Helper functions*/
-bool frameSortFuncTrainer(std::string , std::string );
 
 
 #endif // ANALYZERUNIT_HPP_INCLUDED

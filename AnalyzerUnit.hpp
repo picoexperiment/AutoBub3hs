@@ -7,7 +7,11 @@
 
 #include <opencv2/opencv.hpp>
 #include "bubble/bubble.hpp"
+#include "ParseFolder/Parser.hpp"
+#include "ParseFolder/RawParser.hpp"
+#include "ParseFolder/ZipParser.hpp"
 
+#define MIN_IMAGE_SIZE 100000
 
 class AnalyzerUnit{
 
@@ -22,22 +26,23 @@ class AnalyzerUnit{
         int minEvalFrameNumber = 2;
         int firstTrainingFrames = 1;
 
+        float calculateEntropyFrame(cv::Mat& );
 
     protected:
         /*Event identification and location*/
         std::string ImageDir;
         std::string EventID;
+        std::string MaskDir;
 
         /*List of all the frames belonging to the particular event in question*/
         std::vector<std::string> CameraFrames;
         int CameraNumber;
 
-
-
+        Parser *FileParser;
 
     public:
         /*Constructor and deconstructor*/
-        AnalyzerUnit(std::string, std::string, int, Trainer** );
+        AnalyzerUnit(std::string, std::string, int, Trainer**, std::string, Parser* );
         ~AnalyzerUnit(void );
 
         /*Function to parse and sort the triggers from the folder and the directory where the images are stored*/

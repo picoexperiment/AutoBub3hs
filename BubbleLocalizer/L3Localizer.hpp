@@ -13,7 +13,7 @@
 
 
 #ifndef ImageLocalization_Rough_HPP_INCLUDED
-#define ImageLocalization_Rough_INCLUDED
+#define ImageLocalization_Rough_HPP_INCLUDED
 
 
 /*Includes*/
@@ -46,7 +46,7 @@ class L3Localizer: public AnalyzerUnit{
 
         /*Matrices to store the frames.*/
         cv::Mat presentationFrame;
-        cv::Mat ComparisonFrame, triggerFrame;
+        cv::Mat ComparisonFrame, triggerFrame, preTrigFrame;
 
 
         cv::Mat PostTrigWorkingFrame;
@@ -65,7 +65,7 @@ class L3Localizer: public AnalyzerUnit{
 
     public:
         /*Constructor and deconstructor*/
-        L3Localizer(std::string, std::string, int, bool nonStopPref, Trainer** );
+        L3Localizer(std::string, std::string, int, bool nonStopPref, Trainer**, std::string, Parser* );
         ~L3Localizer();
 
         /*Public functions exposing the interface*/
@@ -81,7 +81,7 @@ class L3Localizer: public AnalyzerUnit{
         bool Level1SuspicionFlag;
 
         void LocalizeOMatic(std::string);
-
+        bool isInMask(cv::Rect*);
 
 
 };

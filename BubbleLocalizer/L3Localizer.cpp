@@ -50,7 +50,7 @@
  * ******************************************************************************/
 
 
-L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData)
+L3Localizer::L3Localizer(std::string EventID, std::string ImageDir, int CameraNumber, bool nonStopPref, Trainer** TrainedData, std::string MaskDir, Parser* Parser):AnalyzerUnit(EventID, ImageDir, CameraNumber, TrainedData, MaskDir, Parser)
 {
 
 
@@ -217,59 +217,104 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
 
-
+    //this->nonStopMode=false;
 
     /*Construct the frame differences and LBPImage Frames*/
-    cv::Mat NewFrameDiffTrig, overTheSigma;
-    cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, NewFrameDiffTrig);
+    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma;
+    cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
+    cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
+    cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png", NewFrameDiffTrig);
+    if (!this->nonStopMode){
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0_TrigFrame.png", this->triggerFrame);
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_00_AvgImage.png", this->TrainedData->TrainedAvgImage);
+        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png", NewFrameDiffTrig);
+//        std::cout << "DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png" << std::endl;
+    }
 
-    overTheSigma = NewFrameDiffTrig - 6*this->TrainedData->TrainedSigmaImage;
+    overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_2_OvrThe6Sigma.png", overTheSigma);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_OvrThe6Sigma.png", overTheSigma);
 
 
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
 
-    cv::threshold(overTheSigma, overTheSigma, 3, 255, CV_THRESH_TOZERO);
-    cv::threshold(overTheSigma, overTheSigma, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, overTheSigma, 3, 255, cv::THRESH_TOZERO);
+    cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
 
 
 
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
+    if (!this->nonStopMode) std::cout << contours.size() << std::endl;
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
     std::vector<cv::Rect> minRect( contours.size() );
 
     int BoxArea=0;
+    int largestBoxArea = 0;
     /*Generate the ellipses and rectangles for each contours*/
     for( int i = 0; i < contours.size(); i++ ) {
+        if (!this->nonStopMode) std::cout << "contours[" << i << "]..." << std::endl;
+        for (int jj = 0; !this->nonStopMode && jj < contours[i].size(); jj++) std::cout << contours[i][jj].x << "," << contours[i][jj].y << std::endl;
         minRect[i] = cv::boundingRect( contours[i]);
         //minAreaRect[i] = cv::minAreaRect(contours[i] );
-
         BoxArea = minRect[i].width*minRect[i].height;
-        if (BoxArea>10){
-            //std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
-            cv::rectangle(this->presentationFrame, minRect[i], this->color_red,1,8,0);
+        if (largestBoxArea < BoxArea) largestBoxArea = BoxArea;
+    }
+    for( int i = 0; i < contours.size(); i++ ) {
+        BoxArea = minRect[i].width*minRect[i].height;
+    
+        if (BoxArea>10 || BoxArea >= largestBoxArea){
+            if (!this->nonStopMode) std::cout<<" Bubble genesis              X: "<<minRect[i].x<<" Y: "<<minRect[i].y<<" W: "<<minRect[i].width<<" H: "<<minRect[i].height<<"\n";
+            cv::rectangle(this->presentationFrame, minRect[i], cv::Scalar( 255,255,255)/*this->color_red*/,1,8,0);
             this->bubbleRects.push_back(minRect[i]);
 
             BubbleImageFrame _thisBubbleFrame;
             _thisBubbleFrame.ContArea = cv::contourArea(contours[i]);
-            _thisBubbleFrame.ContRadius = sqrt(_thisBubbleFrame.ContArea/3.14159);
             _thisBubbleFrame.newPosition = minRect[i];
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
-            _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
-                                                        _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+            _thisBubbleFrame.ContRadius = sqrt(_thisBubbleFrame.ContArea/3.14159);
+            if (_thisBubbleFrame.moments.m00>0){
+                _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
+                                                            _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+            }
+            else{
+                double x = 0, y = 0, n = 0;
+                for (int cc = 0; cc < contours[i].size(); cc++){
+                  x += contours[i][cc].x;
+                  y += contours[i][cc].y;
+                  n++;
+                }
+                x /= n;
+                y /= n;
+                _thisBubbleFrame.MassCentres = cv::Point2f( x,y );
+            }
+            if (!this->nonStopMode){
+                std::cout << "contours[" << i << "].size(): " << contours[i].size() << std::endl;
+                std::cout << "X: " << _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 << " Y: " << _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m00: " << _thisBubbleFrame.moments.m00 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m10: " << _thisBubbleFrame.moments.m10 << std::endl;
+                std::cout << "_thisBubbleFrame.moments.m01: " << _thisBubbleFrame.moments.m01 << std::endl;
+                std::cout << "_thisBubbleFrame.ContArea: " << _thisBubbleFrame.ContArea << std::endl;
+                std::cout << "_thisBubbleFrame.ContRadius: " << _thisBubbleFrame.ContRadius << std::endl;
+                std::cout << "_thisBubbleFrame.MassCentres: " << _thisBubbleFrame.MassCentres.x << "," << _thisBubbleFrame.MassCentres.y << std::endl;
+            }
+
+            //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                if (!this->nonStopMode) std::cout << "Skipping genesis bubble..." << std::endl;
+                continue;
+            }
 
             //bubble* firstBubble = new bubble(minAreaRect[i]);
             bubble* firstBubble = new bubble(_thisBubbleFrame);
@@ -280,7 +325,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     }
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/"+std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
 
 
     //NewFrameDiffTrig.refcount=0;
@@ -316,13 +361,13 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
     /*Shadow removal using blurring and intensity*/
     cv::Mat bubMinusShadow;
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, CV_THRESH_TOZERO|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, cv::THRESH_TOZERO|cv::THRESH_OTSU);
 
 
     //debugShow(bubMinusShadow);
 
     /*Get rid of pixel noise*/
-    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, CV_THRESH_TOZERO);
+    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, cv::THRESH_TOZERO);
 
     //debugShow(bubMinusShadow);
     /*Check if this is a trigger by the interface moving or not - Note: Works ONLY on cam 2's entropy settings*/
@@ -330,10 +375,9 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
     float ImageDynamicRange = ImageDynamicRangeSum(bubMinusShadow,60,200);
     if (ImageDynamicRange==0.0) return;
 
-
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(bubMinusShadow, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(bubMinusShadow, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -361,6 +405,11 @@ void L3Localizer::CalculateInitialBubbleParamsCam2(void )
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
 
+            //Checking if the genesis coordinates of the bubble are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                continue;
+            }
 
 
             //bubble* firstBubble = new bubble(minAreaRect[i]);
@@ -389,7 +438,8 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
     //cv::Mat tempPresentation;
     /*Declare memory / variables that will be needed */
     this->PostTrigWorkingFrame = cv::Mat();
-    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    //this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber], this->PostTrigWorkingFrame);
     //tempPresentation =  this->PostTrigWorkingFrame.clone();
     //cv::cvtColor(tempPresentation, tempPresentation, cv::COLOR_GRAY2BGR);
 
@@ -407,13 +457,13 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
     /*Shadow removal using blurring and intensity*/
     cv::Mat bubMinusShadow;
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, CV_THRESH_TOZERO|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, bubMinusShadow, 100, 255, cv::THRESH_TOZERO|cv::THRESH_OTSU);
 
 
 
 
     /*Get rid of pixel noise*/
-    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, CV_THRESH_TOZERO);
+    cv::threshold(bubMinusShadow, bubMinusShadow, 10, 255, cv::THRESH_TOZERO);
 
     /*Check if this is a trigger by the interface moving or not - Note: Works ONLY on cam 2's entropy settings*/
     //showHistogramImage(bubMinusShadow);
@@ -423,7 +473,7 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(bubMinusShadow, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(bubMinusShadow, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -457,6 +507,12 @@ void L3Localizer::CalculatePostTriggerFrameParamsCam2(int postTrigFrameNumber )
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+
+            //Checking if the feature coordinates are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                continue;
+            }
 
             BubbleTrackingPerFrames.push_back(_thisBubbleFrame);
 
@@ -504,7 +560,8 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
     //cv::Mat tempPresentation;
 
     /*Load the post trig frame*/
-    this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1+postTrigFrameNumber],0);
+    //this->PostTrigWorkingFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame+postTrigFrameNumber], this->PostTrigWorkingFrame);
     //tempPresentation =  this->PostTrigWorkingFrame.clone();
     //cv::cvtColor(tempPresentation, tempPresentation, cv::COLOR_GRAY2BGR);
 
@@ -520,14 +577,14 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
 
     /*Blur and threshold to remove pixel noise*/
     cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, overTheSigma, 3, 255, CV_THRESH_TOZERO);
-    cv::threshold(overTheSigma, overTheSigma, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+    cv::threshold(overTheSigma, overTheSigma, 3, 255, cv::THRESH_TOZERO);
+    cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
 
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1);
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -558,6 +615,12 @@ void L3Localizer::CalculatePostTriggerFrameParams(int postTrigFrameNumber){
             _thisBubbleFrame.moments = cv::moments(contours[i], false); /*second parameter is for a binary image*/
             _thisBubbleFrame.MassCentres = cv::Point2f( _thisBubbleFrame.moments.m10/_thisBubbleFrame.moments.m00 ,
                                                         _thisBubbleFrame.moments.m01/_thisBubbleFrame.moments.m00);
+
+            //Checking if the coordinates of the feature are within acceptable area (cam_mask)
+            if (!(this->isInMask(&_thisBubbleFrame.newPosition))) {
+                //if not, we continue and check next bubble without adding it to Bubblelist
+                continue;
+            }
 
             BubbleTrackingPerFrames.push_back(_thisBubbleFrame);
 
@@ -617,15 +680,26 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     //debugShow(sigmaImageRaw);
     /*Check for malformed events*/
 
-    if (this->CameraFrames.size()<=20) this->okToProceed=false;
+    if (this->CameraFrames.size()<=5) this->okToProceed=false;
 
+    /* Doesn't seem necessary...
+     * The following loop basically only checks if the trigger frame is
+     * within 6 frames of the final frame in the set, but that can be checked
+     * while analyzing the data.
+    */
+    /*
     for (int i=this->MatTrigFrame; i<=this->MatTrigFrame+6; i++){
-        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < 900000) {
+        if (i >= this->CameraFrames.size()){
+            this->okToProceed=false;
+            break;
+        }
+        if (getFilesize(this->ImageDir + this->CameraFrames[i]) < MIN_IMAGE_SIZE) {
             this->okToProceed=false;
             this->TriggerFrameIdentificationStatus = -10;
             std::cout<<"Failed analyzing event at: "<<this->ImageDir<<this->CameraFrames[i]<<"\n";
         }
     }
+    */
 
 
     /* ******************************** */
@@ -634,45 +708,32 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 
     if (!this->okToProceed) return;
     /*Assign the three useful frames*/
-    if (this->CameraNumber==2) this->MatTrigFrame+=1;
+//    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
 
-    this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame+1],0);
+    //this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame], this->triggerFrame);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame-1], this->preTrigFrame);
     this->presentationFrame = triggerFrame.clone();
     //cv::cvtColor(this->presentationFrame, this->presentationFrame, cv::COLOR_GRAY2BGR);
-    this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
+    //this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[0], this->ComparisonFrame);
 
     /*Run the analyzer series*/
-    if (this->CameraNumber==2) {
-        this->CalculateInitialBubbleParamsCam2();
+    this->CalculateInitialBubbleParams();
 
-
-        if (this->MatTrigFrame<29){
-            for (int k=1; k<=NumFramesBubbleTrack; k++)
-            this->CalculatePostTriggerFrameParamsCam2(k);
-        } else {
-            for (int k=1; k<=(39-this->MatTrigFrame); k++)
-            this->CalculatePostTriggerFrameParamsCam2(k);
-
+    if (this->MatTrigFrame<29){
+        for (int k=1; k<=NumFramesBubbleTrack; k++){
+            if ( (this->MatTrigFrame + k) >= this->CameraFrames.size() ) break;
+            this->CalculatePostTriggerFrameParams(k);
         }
-
-
-        //this->CalculatePostTriggerFrameParamsCam2(2);
-        //this->CalculatePostTriggerFrameParamsCam2(3);
     } else {
-        this->CalculateInitialBubbleParams();
-
-        if (this->MatTrigFrame<29){
-            for (int k=1; k<=NumFramesBubbleTrack; k++)
+        for (int k=1; k<=(39-this->MatTrigFrame); k++){
+            if ( (this->MatTrigFrame + k) >= this->CameraFrames.size() ) break;
             this->CalculatePostTriggerFrameParams(k);
-        } else {
-            for (int k=1; k<=(39-this->MatTrigFrame); k++)
-            this->CalculatePostTriggerFrameParams(k);
-
         }
-        //this->CalculatePostTriggerFrameParams(2);
-        //this->CalculatePostTriggerFrameParams(3);
     }
+
 
 
 
@@ -686,3 +747,39 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     //cv::imwrite(imageStorePath+"/"+eventSeq+".jpg", BubbleFrame);
 
 }
+
+//filtering out genesis locations that occur out of acceptable area according to masks in external folder.
+bool L3Localizer::isInMask( cv::Rect *genesis_coords )
+{
+
+    int xpix = genesis_coords->x+genesis_coords->width/2.;
+    int ypix = genesis_coords->y+genesis_coords->height/2;
+    //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
+    std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
+    cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
+    if (mask_image.empty()){
+        std::cout << "Mask image not loadable for event " << this->EventID
+            << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
+        return true;
+    }
+//    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
+
+    /*the cam masks we currently have are grayscale bitmaps meaning we either have a 255 or 0 pixel value. (it's one bit but for some reason it is 255)
+    If we land in the black (out of bounds) zone, ie. 0, we are out of bounds.*/
+
+    //c::mat.at() takes in (y,x) NOT (x,y). Why? It is a matrix, hence we have: row,col (y,x).
+    if ((int)mask_image.at<uchar>(ypix,xpix) > 0 ) {
+
+        return true; //It is within the acceptable range
+
+    } else {
+
+        if (!this->nonStopMode) std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
+        return false; //It lies outside of the acceptable range
+    }
+
+
+}
+
+
+

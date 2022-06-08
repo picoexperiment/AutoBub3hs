@@ -29,7 +29,7 @@ void debugShow(cv::Mat& frame)
     cvFlippedImg = frame;
 
     const char* source_window = "DebugSource";
-    cv::namedWindow( source_window, CV_WINDOW_NORMAL );
+    cv::namedWindow( source_window, cv::WINDOW_NORMAL );
 
     cv::imshow(source_window, cvFlippedImg);
     cv::waitKey(0);

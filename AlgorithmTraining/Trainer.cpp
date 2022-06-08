@@ -8,27 +8,68 @@
 #include <opencv2/opencv.hpp>
 #include "Trainer.hpp"
 #include "../LBP/LBPUser.hpp"
-#include "../ImageEntropyMethods/ImageEntropyMethods.hpp"
+//#include "../ImageEntropyMethods/ImageEntropyMethods.hpp"
 #include "../common/UtilityFunctions.hpp"
+#include "../FrameSorter.hpp"
 
 
 //#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
 //#include "LBP/LBPUser.hpp"
 
+#define debug false
 
 
 
-Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir)
+Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder, Parser* FileParser)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->camera=camera;
     this->EventList = EventList;
     this->EventDir = EventDir;
+    this->ImageFormat = ImageFormat;
+    this->ImageFolder = ImageFolder;
 
+    this->FileParser = FileParser;
 
+    // SearchPattern is used in sorting images in the image folder.
+    std::string searchCode = "cam%d";
+    int searchStart = ImageFormat.find(searchCode);
+    this->SearchPattern = ImageFormat.substr(searchStart, searchStart + searchCode.size() + 5);
+
+    this->StatusCode = 0;
 }
 
-Trainer::~Trainer(void ) {}
+Trainer::Trainer(const Trainer &other_trainer){
+    this->camera = other_trainer.camera;
+    this->EventList = std::vector<std::string>(other_trainer.EventList);
+    this->EventDir = std::string(other_trainer.EventDir);
+
+    this->TrainedAvgImage = cv::Mat::zeros(other_trainer.TrainedAvgImage.rows, other_trainer.TrainedAvgImage.cols, other_trainer.TrainedAvgImage.type());
+    other_trainer.TrainedAvgImage.copyTo(this->TrainedAvgImage);
+
+    this->TrainedSigmaImage = cv::Mat::zeros(other_trainer.TrainedSigmaImage.rows, other_trainer.TrainedSigmaImage.cols, other_trainer.TrainedSigmaImage.type());
+    other_trainer.TrainedSigmaImage.copyTo(this->TrainedSigmaImage);
+
+
+    this->TrainedLBPAvg = cv::Mat::zeros(other_trainer.TrainedLBPAvg.rows, other_trainer.TrainedLBPAvg.cols, other_trainer.TrainedLBPAvg.type());
+    other_trainer.TrainedLBPAvg.copyTo(this->TrainedLBPAvg);
+
+
+    this->TrainedLBPSigma = cv::Mat::zeros(other_trainer.TrainedLBPSigma.rows, other_trainer.TrainedLBPSigma.cols, other_trainer.TrainedLBPSigma.type());
+    other_trainer.TrainedLBPSigma.copyTo(this->TrainedLBPSigma);
+
+    this->isLBPApplied = other_trainer.isLBPApplied;
+
+    this->ImageFormat = other_trainer.ImageFormat;
+    this->ImageFolder = other_trainer.ImageFolder;
+    this->SearchPattern = other_trainer.SearchPattern;
+
+    this->FileParser = other_trainer.FileParser->clone();
+}
+
+Trainer::~Trainer(void ) {
+    if (this->FileParser) delete this->FileParser;
+}
 
 
 
@@ -65,14 +106,14 @@ void Trainer::ParseAndSortFramesInFolder(std::string searchPattern, std::string 
                 // you want here. Something like:
                 if ( strstr( hFile->d_name, searchPattern.c_str() )){
                     this->CameraFrames.push_back(std::string(hFile->d_name));
-                    }
+                }
             }
 
 
 
             closedir (dir);
-
-            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSortFuncTrainer);
+            FrameSorter frameSorter(this->ImageFormat);
+            std::sort(this->CameraFrames.begin(), this->CameraFrames.end(), frameSorter);//frameSortFuncTrainer);
 
         }
         else
@@ -190,30 +231,29 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
     for (int i=0; i<this->EventList.size(); i++)
     {
-        ThisEventDir = this->EventDir+EventList[i]+"/Images/";
-        std::string ImageFilePattern = "cam"+std::to_string(this->camera)+"_image";
-        this->ParseAndSortFramesInFolder(ImageFilePattern, ThisEventDir);
+        ThisEventDir = this->EventDir + EventList[i] + this->ImageFolder;
 
+        char tmpImageFilePattern[30];
+        sprintf(tmpImageFilePattern, this->SearchPattern.c_str(), this->camera);
+        std::string ImageFilePattern = tmpImageFilePattern;//"cam"+std::to_string(this->camera)+"_image";
 
+        //this->ParseAndSortFramesInFolder(ImageFilePattern, ThisEventDir);
+        this->FileParser->ParseAndSortFramesInFolder(EventList[i], this->camera, this->CameraFrames);
 
-
-        TestingForEntropyArray.clear(); 
+        TestingForEntropyArray.clear();
 
         /*The for block loads images 0 and 1 from each event*/
-
-        if (this->CameraFrames.size() >20 ){
+        if (this->CameraFrames.size() > 0 ){
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
-                if (getFilesize(thisEventLocation) > 100000){ // it was 1000000=1MB, now 100kB=100000
-                    tempImagingProcess = cv::imread(thisEventLocation, 0);
 
-                    TestingForEntropyArray.push_back(tempImagingProcess);
-                    isThisAGoodEvent = true;
-                } else {
-                    isThisAGoodEvent = false;
-                    std::cout<<"Event "<<EventList[i]<<" is malformed. Skipping training on this event\n";
-                    break;
-                }
+                //tempImagingProcess = cv::imread(thisEventLocation, 0);
+                // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
+                this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
+
+                TestingForEntropyArray.push_back(tempImagingProcess);
+                isThisAGoodEvent = true;
+                /* if error with GetImage - return -7 */
             }
         } else {
             std::cout<<"Event "<<EventList[i]<<" is nonexistant on the disk. Skipping training on this event\n";
@@ -224,7 +264,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
         /*Test entropy for the first 2 trained sets*/
         if (isThisAGoodEvent){
             tempTestingEntropy = TestingForEntropyArray[1]-TestingForEntropyArray[0];
-            singleEntropyTest = calculateEntropyFrame(tempTestingEntropy);
+            singleEntropyTest = this->calculateEntropyFrame(tempTestingEntropy);
             //std::cout<<ThisEventDir<<ImageFilePattern<<" "<<singleEntropyTest<<"\n";
         } else {
             singleEntropyTest = 0.0000;
@@ -253,12 +293,18 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
 
     if (backgroundImagingArray.size()==0){
-        printf("Training image set has 0 frames. This means that the event is malformed.\n");
-        throw -7;
+        std::cout << "Training image set for camera " << this->camera << " has 0 frames. This means that the event is malformed." << std::endl;
+        this->StatusCode = -7;
+        return;
+        //throw -7;
     }
     /*Calculate mean and sigma of the raw images*/
     advance_cursor();
     this->CalculateMeanSigmaImageVector(backgroundImagingArray, this->TrainedAvgImage, this->TrainedSigmaImage);
+    if (debug){
+        cv::imwrite("DebugPeek/AvgImage_cam" + std::to_string(this->camera) + ".png", this->TrainedAvgImage);
+        cv::imwrite("DebugPeek/SigmaImage_cam" + std::to_string(this->camera) + ".png", this->TrainedSigmaImage);
+    }
 
     /*Calculate mean and sigma of LBP*/
     advance_cursor();
@@ -271,31 +317,48 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
 }
 
-/*Misc functions*/
 
-/*! \brief Sorting function for camera frames
- *
- * To be used by std::sort for sorting files associated with
- * the camera frames. Not to be used otherwise.
- */
+/*This function calculates ImageEntropy
+based on CPU routines. It converts the image to
+BW first. This is assumed that the image frames are
+subtracted already
+2021 11 19 - Colin M
+    Moved here for implicit thread safety.
+*/
+float Trainer::calculateEntropyFrame(cv::Mat& ImageFrame){
 
-bool frameSortFuncTrainer(std::string i, std::string j)
-{
+    /*Memory for the image greyscale and histogram*/
+    cv::Mat image_greyscale, img_histogram;
 
-    unsigned int sequence_i, camera_i;
-    int got_i = sscanf(i.c_str(),  "cam%d_image%u.png",
-                       &camera_i, &sequence_i
-                      );
+    /*Histogram sizes and bins*/
+    const int histSize[] = {16};
+    float range[] = { 0, 256 };
+    const float* histRange[] = { range };
 
 
-    assert(got_i == 2);
 
-    unsigned int  sequence_j, camera_j;
-    int got_j = sscanf(j.c_str(),  "cam%d_image%u.png",
-                       &camera_j, &sequence_j
-                      );
-    assert(got_j == 2);
+    float ImgEntropy=0.0;
+    /*Check if image is BW or colour*/
+    if (ImageFrame.channels() > 1){
+        /*Convert to BW*/
+        cv::cvtColor(ImageFrame, image_greyscale, cv::COLOR_BGR2GRAY);
+    } else {
+        /*The = operator assigns pointers so no memory is wasted*/
+        image_greyscale = ImageFrame;
+    }
 
-    return sequence_i < sequence_j;
 
+    /*Calculate Histogram*/
+    cv::calcHist(&image_greyscale, 1, 0,        cv::Mat(), img_histogram, 1, histSize, histRange, true, false);
+    /*Normalize Hist*/
+    img_histogram = img_histogram/(ImageFrame.rows*ImageFrame.cols);
+    /*Calculate Entropy*/
+    for (int i=0; i<img_histogram.rows; i++){
+            float binEntry = img_histogram.at<float>(i, 0);
+            if (binEntry !=0)
+                ImgEntropy -= binEntry * log2(binEntry);
+    }
+
+    return ImgEntropy;
 }
+

@@ -9,18 +9,45 @@
  * Issues: None atm
  *
  *******************************************************************************/
-#include "ParseFolder.hpp"
+#include "RawParser.hpp"
 #include <dirent.h>
 #include <stdio.h>
 #include <vector>
 #include <string.h>
-#include <sys/types.h> //.... added 
-#include <sys/stat.h>  //.... 
-#include <iostream>
+#include <sys/types.h> //.... added
+#include <sys/stat.h>  //....
 
+#include <boost/regex.hpp>
+#include <boost/filesystem.hpp>
+
+#define debug false
+#include <chrono>
+using std::chrono::milliseconds;
+
+RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat) : Parser(RunFolder, ImageFolder, ImageFormat){}
+
+RawParser* RawParser::clone(){
+    return new RawParser(this->RunFolder, this->ImageFolder, this->ImageFormat);
+}
+
+void RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
+    auto t0 = std::chrono::high_resolution_clock::now();
+    boost::filesystem::path imagePath(this->RunFolder);
+    imagePath = imagePath / EventID / this->ImageFolder / FrameName;
+
+    Image = cv::imread(imagePath.native(), 0);
+    //std::cout << imagePath << " " << Image.empty() << std::endl;
+    if (debug){
+        auto t1 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> dt = t1 - t0;
+        std::cout << "GetImage: " << dt.count() << std::endl;
+    }
+}
+
+RawParser::~RawParser(){};
 
 /*Function to Generate File Lists*/
-void GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, int* statuscode, const char* camera_out_name)
+void RawParser::GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, const char* camera_out_name)
 {
     DIR *dir  = opendir (EventFolder) ;
     if (dir)
@@ -50,16 +77,16 @@ void GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, i
     {
         /* could not open directory */
         //perror ("");
-        *statuscode = 1;
+        this->StatusCode = 1;
     }
 
 }
 
 
 /*Function to Generate File Lists*/
-void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList, int& statuscode)
+void RawParser::GetEventDirLists(std::vector<std::string>& EventList)
 {
-    DIR *dir  = opendir (RunFolder) ;
+    DIR *dir  = opendir (this->RunFolder.c_str()) ;
     if (dir)
     {
         /* print all the files and directories within directory */
@@ -80,7 +107,7 @@ void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList
             //
             // But we need the following to temporarily solve parsing issue
             char folder[200];
-            strcpy(folder,RunFolder);
+            strcpy(folder, this->RunFolder.c_str());
             char* currentPath = strcat(folder,hFile->d_name);
             struct stat statbuf;
             if(stat(currentPath, &statbuf) == -1)
@@ -102,8 +129,27 @@ void GetEventDirLists(const char* RunFolder, std::vector<std::string>& EventList
     {
         /* could not open directory */
         //perror ("");
-        std::cout << "Could not open directory: " << RunFolder << std::endl;
-        statuscode = 1;
+        this->StatusCode = 1;
     }
 
+}
+
+void RawParser::ParseAndSortFramesInFolder(std::string EventID, int Camera, std::vector<std::string>& Contents){
+    using namespace boost::filesystem;
+
+    path eventDir = this->RunFolder;
+    eventDir /= EventID;
+    eventDir /= this->ImageFolder;
+
+    std::string re_str = "^.*cam" + std::to_string(Camera) + ".*(png|bmp)";
+    boost::regex re(re_str);
+
+    if (exists(eventDir) && is_directory(eventDir)){
+        for (const directory_entry& x : directory_iterator(eventDir)){
+            if (boost::regex_match(x.path().native(), re)){
+                Contents.push_back(x.path().filename().native());
+            }
+        }
+        std::sort(Contents.begin(), Contents.end());
+    }
 }

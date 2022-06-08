@@ -32,6 +32,7 @@ Usage:
 AutoBub3hs-builddir$ ./abub3hs <location of data> <run number> <output folder>
 ```
 
+Make sure to put the folder `cam_masks` into the same directory as the abub3hs executable (build directory)!
 `<location of data>` and `<output folder>` MUST have trailing slashes!
 
 Output:
@@ -46,6 +47,7 @@ The error codes in the recon file are as follows:
 -5: Failed to make a file list of all files in the run (data corruption?)
 -6: Failed to analyze / segfault (malformed images / data corruption /missing images)
 -7: Failed to train on the dataset (some event folders might be empty)
+-10: Unknown storage format (current options are "raw" and "zip")
 
 
 
