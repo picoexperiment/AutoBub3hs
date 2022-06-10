@@ -5,6 +5,7 @@ project( DisplayImage )
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
 find_package( Boost REQUIRED COMPONENTS regex filesystem program_options QUIET )
+execute_process(COMMAND git submodule update --init --recursive)
 
 # Minizip-ng options override - Only compile Zlib support
 set(MZ_COMPAT OFF CACHE BOOL "Enable compatibility layer with minizip
