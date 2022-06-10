@@ -120,17 +120,18 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
 
 std::string usage(){
     std::string msg(
-                "Usage: abub3hs [-hz] [-d D] data_dir run_ID out_dir [cam_mask_dir]\n"
+                "Usage: abub3hs [-hz] [-D data_series] [-c cam_mask_dir] -d data_dir -r run_ID -o out_dir\n"
                 "Run the AutoBub3hs bubble finding algorithm on a PICO run\n\n"
+                "Required arguments:\n"
+                "  -d, --data_dir = Dir\t\tpath to the directory in which the run folder/file is stored\n"
+                "  -r, --run_id = Str\t\trun ID, formatted as YYYYMMDD_*\n"
+                "  -o, --out_dir = Dir\t\tdirectory to write the output file to\n"
+                "  -c, --cam_mask_dir = Dir\tdirectory containing the camera mask images. If not included, the mask check is skipped\n\n"
                 "Optional arguments:\n"
-                "  -h, --help\t\tgive this help message\n"
-                "  -z, --zip\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
-                "  -d, --data_series=D\tname of the data series, e.g. 40l-19, 30l-16, etc.\n\n"
-                "Positional arguments:\n"
-                "  data_dir\tpath to the directory in which the run folder/file is stored\n"
-                "  run_ID\trun ID, formatted as YYYYMMDD_*\n"
-                "  out_dir\tdirectory to write the output file to\n"
-                "  cam_mask_dir\tdirectory containing the camera mask images. If not included, the mask check is skipped\n");
+                "  -h, --help\t\t\tgive this help message\n"
+                "  -z, --zip\t\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
+                "  -D, --data_series = Str\tname of the data series, e.g. 40l-19, 30l-16, etc.\n"
+    );
     return msg;
 }
 
@@ -148,25 +149,27 @@ int main(int argc, char** argv)
     po::options_description generic("Arguments");
     generic.add_options()
         ("help,h", "produce help message")
-        ("data_series,d", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
+        ("data_series,D", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
         ("zip,z", po::bool_switch(&zipped), "run is stored as a zip file")
-        ("data_dir", po::value<std::string>(&dataLoc), "directory in which the run is stored")
-        ("run_num", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
-        ("out_dir", po::value<std::string>(&out_dir), "directory to write the output file to")
-        ("cam_mask_dir", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
+        ("data_dir,d", po::value<std::string>(&dataLoc), "directory in which the run is stored")
+        ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
+        ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
+        ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
     ;
 
     // This part is required for positional arguments.  The call signature is "add(<arg>, <# expected arguments)
+    /*
     po::positional_options_description p;
     p.add("data_dir", 1);
     p.add("run_num", 1);
     p.add("out_dir", 1);
     p.add("cam_mask_dir", 1);
+    */
 
     // Parsing arguments
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).
-            options(generic).positional(p).run(), vm);
+            options(generic).run(), vm);
     po::notify(vm);
 
     if (vm.count("help") | argc == 1){
@@ -175,7 +178,7 @@ int main(int argc, char** argv)
     }
 
     if (dataLoc.compare("") == 0 | run_number.compare("") == 0 | out_dir.compare("") == 0){
-        std::cerr << "Incorrect number of positional arguments; use \"autobub3hs -h\" to view required arguments" << std::endl;
+        std::cerr << "Insufficient required arguments; use \"autobub3hs -h\" to view required arguments" << std::endl;
         return -1;
     }
 
