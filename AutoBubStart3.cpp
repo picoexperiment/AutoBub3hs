@@ -142,13 +142,14 @@ int main(int argc, char** argv)
     std::string out_dir;
     std::string mask_dir;
     std::string data_series;
+    bool zipped = false;
 
     // generic options
     po::options_description generic("Arguments");
     generic.add_options()
         ("help,h", "produce help message")
         ("data_series,d", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
-        ("zip,z", "run is stored as a zip file")
+        ("zip,z", po::bool_switch(&zipped), "run is stored as a zip file")
         ("data_dir", po::value<std::string>(&dataLoc), "directory in which the run is stored")
         ("run_num", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
         ("out_dir", po::value<std::string>(&out_dir), "directory to write the output file to")
@@ -175,7 +176,7 @@ int main(int argc, char** argv)
 
     if (dataLoc.compare("") == 0 | run_number.compare("") == 0 | out_dir.compare("") == 0){
         std::cerr << "Incorrect number of positional arguments; use \"autobub3hs -h\" to view required arguments" << std::endl;
-        return -1
+        return -1;
     }
 
     printf("This is AutoBub v3, the automatic unified bubble finder code for all chambers\n");
@@ -183,15 +184,7 @@ int main(int argc, char** argv)
     std::string this_path = argv[0];
     std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
 
-//    std::string data_series = "";
-//    if (argc>=6){ data_series = argv[5]; }
-
-    std::string storage_format = "raw";
-    if (vm.count("zip")){ storage_format = "zip"; }
-//    if (argc>=7){ storage_format = argv[6]; }
-
     std::string eventDir = dataLoc + "/" + run_number + "/";
-
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.
@@ -228,20 +221,13 @@ int main(int argc, char** argv)
     std::vector<std::string> EventList;
     int EVstatuscode = 0;
 
-
     Parser *FileParser;
     /* The Parser reads directories/zip files and retreives image data */
-    if (storage_format == "raw"){
-        FileParser = new RawParser(eventDir, imageFolder, imageFormat);
-    }
-    else if (storage_format == "zip"){
+    if (zipped){
         FileParser = new ZipParser(eventDir, imageFolder, imageFormat);
     }
     else {
-        std::cout << "Unknown storage format from command line arguments: " << storage_format << std::endl;
-        for (int icam = 0; icam < numCams; icam++){ PICO60Output->stageCameraOutputError(icam, -10, -1); }
-        PICO60Output->writeCameraOutput();
-        return -10;
+        FileParser = new RawParser(eventDir, imageFolder, imageFormat);
     }
 
 
