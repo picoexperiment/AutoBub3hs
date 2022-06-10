@@ -41,11 +41,13 @@
 
 #include <omp.h>
 
+#include <boost/program_options.hpp>
+
 const int evalEntropyThresholdFrames = 2;
 std::vector<int> badEvents;
 
 
-
+namespace po = boost::program_options;
 
 
 /*Workaround because fermi grid is using old gcc*/
@@ -116,37 +118,76 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
 
 }
 
+std::string usage(){
+    std::string msg(
+                "Usage: abub3hs [-hz] [-D data_series] [-c cam_mask_dir] -d data_dir -r run_ID -o out_dir\n"
+                "Run the AutoBub3hs bubble finding algorithm on a PICO run\n\n"
+                "Required arguments:\n"
+                "  -d, --data_dir = Dir\t\tpath to the directory in which the run folder/file is stored\n"
+                "  -r, --run_id = Str\t\trun ID, formatted as YYYYMMDD_*\n"
+                "  -o, --out_dir = Dir\t\tdirectory to write the output file to\n"
+                "  -c, --cam_mask_dir = Dir\tdirectory containing the camera mask images. If not included, the mask check is skipped\n\n"
+                "Optional arguments:\n"
+                "  -h, --help\t\t\tgive this help message\n"
+                "  -z, --zip\t\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
+                "  -D, --data_series = Str\tname of the data series, e.g. 40l-19, 30l-16, etc.\n"
+    );
+    return msg;
+}
 
 /*The main autobub code starts here*/
 int main(int argc, char** argv)
 {
+    std::string dataLoc;
+    std::string run_number;
+    std::string out_dir;
+    std::string mask_dir;
+    std::string data_series;
+    bool zipped = false;
 
-    printf("This is AutoBub v3, the automatic unified bubble finder code for all chambers\n");
+    // generic options
+    po::options_description generic("Arguments");
+    generic.add_options()
+        ("help,h", "produce help message")
+        ("data_series,D", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
+        ("zip,z", po::bool_switch(&zipped), "run is stored as a zip file")
+        ("data_dir,d", po::value<std::string>(&dataLoc), "directory in which the run is stored")
+        ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
+        ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
+        ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
+    ;
 
-    if (argc < 5)
-    {
-        printf("Not enough parameters.\nUsage: abub3hs <location of data> <run number> <directory for output file> <directory with camera masks> [optional: data_series]\nEg: abub3hs /scratch/$USER/ 20200925_1 /project/rrg-kenclark/$USER/abub_out/ ./cam_masks/ 40l-19\n");
-        printf("Note the trailing slashes.\n");
+    // This part is required for positional arguments.  The call signature is "add(<arg>, <# expected arguments)
+    /*
+    po::positional_options_description p;
+    p.add("data_dir", 1);
+    p.add("run_num", 1);
+    p.add("out_dir", 1);
+    p.add("cam_mask_dir", 1);
+    */
+
+    // Parsing arguments
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).
+            options(generic).run(), vm);
+    po::notify(vm);
+
+    if (vm.count("help") | argc == 1){
+        std::cout << usage() << std::endl;
+        return 1;
+    }
+
+    if (dataLoc.compare("") == 0 | run_number.compare("") == 0 | out_dir.compare("") == 0){
+        std::cerr << "Insufficient required arguments; use \"autobub3hs -h\" to view required arguments" << std::endl;
         return -1;
     }
 
-    std::string dataLoc = argv[1];
-    std::string run_number = argv[2];
-    std::string out_dir = argv[3];
+    printf("This is AutoBub v3, the automatic unified bubble finder code for all chambers\n");
 
     std::string this_path = argv[0];
     std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
-    std::string mask_dir = abub_dir+"cam_masks/";
-    if (argc>=5){ mask_dir = argv[4]; }
-
-    std::string data_series = "";
-    if (argc>=6){ data_series = argv[5]; }
-
-    std::string storage_format = "raw";
-    if (argc>=7){ storage_format = argv[6]; }
 
     std::string eventDir = dataLoc + "/" + run_number + "/";
-
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.
@@ -183,20 +224,13 @@ int main(int argc, char** argv)
     std::vector<std::string> EventList;
     int EVstatuscode = 0;
 
-
     Parser *FileParser;
     /* The Parser reads directories/zip files and retreives image data */
-    if (storage_format == "raw"){
-        FileParser = new RawParser(eventDir, imageFolder, imageFormat);
-    }
-    else if (storage_format == "zip"){
+    if (zipped){
         FileParser = new ZipParser(eventDir, imageFolder, imageFormat);
     }
     else {
-        std::cout << "Unknown storage format from command line arguments: " << storage_format << std::endl;
-        for (int icam = 0; icam < numCams; icam++){ PICO60Output->stageCameraOutputError(icam, -10, -1); }
-        PICO60Output->writeCameraOutput();
-        return -10;
+        FileParser = new RawParser(eventDir, imageFolder, imageFormat);
     }
 
 
