@@ -155,13 +155,14 @@ int main(int argc, char** argv)
         ("cam_mask_dir", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
     ;
 
+    // This part is required for positional arguments.  The call signature is "add(<arg>, <# expected arguments)
     po::positional_options_description p;
     p.add("data_dir", 1);
     p.add("run_num", 1);
     p.add("out_dir", 1);
     p.add("cam_mask_dir", 1);
 
-    // Parsing argument
+    // Parsing arguments
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).
             options(generic).positional(p).run(), vm);
