@@ -197,7 +197,7 @@ void AnalyzerUnit::FindTriggerFrame(void ){
          * **************** */
         //std::cout<<"Entropy of BkgSub "<<i+30<<" image: "<<singleEntropy<<"\n";
 //        debugShow(debug_mask);
-        imwrite("/home/carl/test/abub_debug/"+this->CameraFrames[i], debug_mask);
+//        imwrite("/home/carl/test/abub_debug/"+this->CameraFrames[i], debug_mask);
 
 
         /*Calculate entropy of ROI*/
