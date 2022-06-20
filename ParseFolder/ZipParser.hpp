@@ -37,7 +37,7 @@ class ZipParser: public Parser {
 
         virtual ZipParser* clone() override;
 
-        void GetImage(std::string, std::string, cv::Mat&) override;
+        int GetImage(std::string, std::string, cv::Mat&) override;
         void GetEventDirLists(std::vector<std::string>&) override;
         void GetFileLists(const char*, std::vector<std::string>&, const char*) override;
         void ParseAndSortFramesInFolder(std::string, int, std::vector<std::string>&) override;
