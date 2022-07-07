@@ -23,10 +23,14 @@ class AnalyzerUnit{
 
 
         /*Training frames and detection frames*/
-        int minEvalFrameNumber = 2;
-        int firstTrainingFrames = 1;
+        int minEvalFrameNumber = 0;     //CR: Not sure why we need this, so changing from 2 to 0
+        int firstTrainingFrames = 1;    //CR: This doesn't seem to do anything anymore
+        int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
-        float calculateEntropyFrame(cv::Mat& );
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame);
+        float calculateEntropyFrame(cv::Mat& , bool debug = false);
+        double calculateSignificanceFrame(cv::Mat& DiffFrame, cv::Mat& TrainedSigma, bool debug = false);
+        int checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -54,9 +58,12 @@ class AnalyzerUnit{
         /*Variable holding the RotatedRect bubble array and the trigger frame*/
         std::vector<cv::RotatedRect> BubblePixelPos;
         int MatTrigFrame;
+        
+        /*Threshold for localizer*/
+        int loc_thres;
 
         /*Find the trigger frame function*/
-        void FindTriggerFrame(void);
+        void FindTriggerFrame(bool nonStopMode, int startframe);
 
         /*Overloaded function based on the analyzer*/
         virtual void LocalizeOMatic(std::string )=0; //EventList[evi] is being passed. Why?
@@ -75,6 +82,7 @@ class AnalyzerUnit{
 
 /*Helper functions*/
 bool frameSortFunc(std::string , std::string );
+void sqrt_mat(cv::Mat& M);
 
 
 #endif // ANALYZERUNIT_HPP_INCLUDED

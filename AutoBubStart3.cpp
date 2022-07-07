@@ -83,25 +83,30 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
     try
     {
         //AnalyzerCGeneric->ParseAndSortFramesInFolder();
-        AnalyzerCGeneric->FindTriggerFrame();
-        //cout<<"Trigger Frame: "<<AnalyzerCGeneric->MatTrigFrame<<"\n";
-        //std::cout << actualEventNumber << " " << camera << " " << AnalyzerCGeneric->MatTrigFrame <<  " " << AnalyzerCGeneric->TriggerFrameIdentificationStatus << std::endl;
-        if (AnalyzerCGeneric->okToProceed)
-        {
+        
+        do{
+            AnalyzerCGeneric->FindTriggerFrame(nonStopPref,AnalyzerCGeneric->MatTrigFrame+1);
+            //cout<<"Trigger Frame: "<<AnalyzerCGeneric->MatTrigFrame<<"\n";
+            //std::cout << actualEventNumber << " " << camera << " " << AnalyzerCGeneric->MatTrigFrame <<  " " << AnalyzerCGeneric->TriggerFrameIdentificationStatus << std::endl;
+            if (AnalyzerCGeneric->okToProceed)
+            {
 
-            AnalyzerCGeneric->LocalizeOMatic(out_dir);  //uncomment for full run
-            if (AnalyzerCGeneric->okToProceed) {
-                #pragma omp critical
-                Pico60Writer->stageCameraOutput(AnalyzerCGeneric->BubbleList, camera, AnalyzerCGeneric->MatTrigFrame, actualEventNumber);
-            }
-            else {
-                Pico60Writer->stageCameraOutputError(camera,-8, actualEventNumber);
+                AnalyzerCGeneric->LocalizeOMatic(out_dir);  //uncomment for full run
+                if (AnalyzerCGeneric->okToProceed) {
+                    #pragma omp critical
+                    Pico60Writer->stageCameraOutput(AnalyzerCGeneric->BubbleList, camera, AnalyzerCGeneric->MatTrigFrame, actualEventNumber);
                 }
-        }
-        else
-        {
-            Pico60Writer->stageCameraOutputError(camera,AnalyzerCGeneric->TriggerFrameIdentificationStatus, actualEventNumber);
-        }
+                else {
+                    Pico60Writer->stageCameraOutputError(camera,-8, actualEventNumber);
+                    break;
+                    }
+            }
+            else
+            {
+                Pico60Writer->stageCameraOutputError(camera,AnalyzerCGeneric->TriggerFrameIdentificationStatus, actualEventNumber);
+                break;
+            }
+        } while (AnalyzerCGeneric->BubbleList.size()==0);
 
     /*The exception block for camera specific crashes. outputs -6 for the error*/
     }
@@ -131,6 +136,8 @@ std::string usage(){
                 "  -h, --help\t\t\tgive this help message\n"
                 "  -z, --zip\t\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
                 "  -D, --data_series = Str\tname of the data series, e.g. 40l-19, 30l-16, etc.\n"
+                "  --debug = Int\t\t\t3 digit int; eg: 101: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug\n"
+                "  -e, --event = Int\t\tspecify a single event to process. Probably just useful for debugging and testing\n"
     );
     return msg;
 }
@@ -143,6 +150,8 @@ int main(int argc, char** argv)
     std::string out_dir;
     std::string mask_dir;
     std::string data_series;
+    int debug_mode = 0;
+    int event_user = -1;
     bool zipped = false;
 
     // generic options
@@ -155,6 +164,8 @@ int main(int argc, char** argv)
         ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
         ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
         ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
+        ("debug", po::value<int>(&debug_mode), "debug mode: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug")
+        ("event,e", po::value<int>(&event_user), "specify a single event to process")
     ;
 
     // This part is required for positional arguments.  The call signature is "add(<arg>, <# expected arguments)
@@ -215,6 +226,8 @@ int main(int argc, char** argv)
             frameOffset = 30;
             numCams = 4;
     }
+
+    if (debug_mode%100/10) omp_set_num_threads(1);
 
     /*I anticipate the object to become large with many bubbles, so I wanted it on the heap*/
     OutputWriter *PICO60Output = new OutputWriter(out_dir, run_number, frameOffset, numCams);
@@ -315,7 +328,9 @@ int main(int argc, char** argv)
         std::string imageDir=eventDir+EventList[evi]+"/Images/";
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
-//if (evi != 94) continue;
+        
+        if (event_user > 0 && evi != event_user) continue;
+        
         printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
 
@@ -327,8 +342,8 @@ int main(int argc, char** argv)
         for (int icam = 0; icam < numCams; icam++){
             Parser *tp = FileParser->clone();
 
-            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, true, &Trainers[icam], mask_dir, tp));
-            AnyCamAnalysis(EventList[evi], imageDir, icam, true, &Trainers[icam], &PICO60Output, out_dir, actualEventNumber, &Analyzers[icam]);
+            Analyzers.push_back(new L3Localizer(EventList[evi], imageDir, icam, debug_mode/100?false:true, &Trainers[icam], mask_dir, tp));
+            AnyCamAnalysis(EventList[evi], imageDir, icam, debug_mode%10?false:true, &Trainers[icam], &PICO60Output, out_dir, actualEventNumber, &Analyzers[icam]);
         }
         /*
         AnalyzerUnit *AnalyzerC0 = new L3Localizer(EventList[evi], imageDir, 0, true, &TrainC0, mask_dir);
