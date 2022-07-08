@@ -267,11 +267,12 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     singleEntropy = this->checkTriggerDerivative(diff_frame, prevDiff,!nonStopMode);
                     //singleEntropy = this->calculateSignificanceFrame(diff_frame,this->TrainedData->TrainedSigmaImage);
 
-                    if (singleEntropy > 2/3 * entropyThreshold){
+                    if (singleEntropy <= 2/3 * entropyThreshold) break;
+                    else if (ii == numFramesCheck){
                         this->TriggerFrameIdentificationStatus = 0;
                         this->MatTrigFrame = i;
                     }
-                    else break;
+                    //else: check next frame
                     
                     tempPrevFrame = peakFrame;
                 }
