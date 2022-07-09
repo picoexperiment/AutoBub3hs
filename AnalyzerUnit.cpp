@@ -29,6 +29,7 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
     this->TrainedData = new Trainer(**TrainedData);
     this->MatTrigFrame = 0;
     this->loc_thres = 3;
+    this->ratios.resize(256);
     this->FileParser = Parser;
 
     this->FileParser->ParseAndSortFramesInFolder(this->EventID, this->CameraNumber, this->CameraFrames);
@@ -134,7 +135,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     float entropyThreshold;
     //if(this->CameraNumber==2) entropyThreshold = 0.0009;
     //else entropyThreshold = 0.0003;
-    entropyThreshold = 0;
+    entropyThreshold = 0.5;
     
 
     /*Variable to store the current entropy in*/
@@ -158,12 +159,19 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     cv::Mat sqrt_trained_avg = this->TrainedData->TrainedAvgImage.clone();
     sqrt_mat(sqrt_trained_avg);
     
-    if (startframe < 2) startframe = 2;
+    if (startframe < 1) startframe = 1;
+    
+    if (startframe == 1){
+        ratios.clear();
+        ratios.resize(256);
+    }
   
     cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
-    this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-2], prevFrame);
+    /*this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-2], prevFrame);
     this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], workingFrame);
-    ProcessFrame(workingFrame,prevFrame,prevDiff);
+    ProcessFrame(workingFrame,prevFrame,prevDiff);*/
+    
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], prevFrame);
 
     /* GaussianBlur can help with noisy images */
     //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
@@ -199,7 +207,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //subtr_frame = lbpImage(diff_frame);
         
         //singleEntropy = this->calculateEntropyFrame(sigma_frame,!nonStopMode);
-        singleEntropy = this->checkTriggerDerivative(subtr_frame, prevDiff,!nonStopMode);
+        singleEntropy = this->checkTriggerDerivative(subtr_frame, prevDiff,true,!nonStopMode);
         //singleEntropy = this->calculateSignificanceFrame(diff_frame,this->TrainedData->TrainedSigmaImage,!nonStopMode);
 
         /* ****************
@@ -252,6 +260,8 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                 */
                 //workingFrame = cv::imread(evalImg.c_str(), 0);
                 
+                //Note: This block skips over anomalies in the image data and noise triggers.
+                //      Set "numFramesCheck" to 0 if you want to trigger on these anomalies.
                 int numFramesCheck = 2;
                 cv::Mat tempPrevFrame = workingFrame;
                 cv::Mat peakFrame;
@@ -264,7 +274,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
 
                     //singleEntropy = this->calculateEntropyFrame(diff_frame);
-                    singleEntropy = this->checkTriggerDerivative(diff_frame, prevDiff,!nonStopMode);
+                    singleEntropy = this->checkTriggerDerivative(diff_frame, prevDiff,false,!nonStopMode);
                     //singleEntropy = this->calculateSignificanceFrame(diff_frame,this->TrainedData->TrainedSigmaImage);
 
                     if (singleEntropy <= 2/3 * entropyThreshold) break;
@@ -298,12 +308,16 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
 
     pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
     neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
-    
+
     cv::GaussianBlur(pos_diff, pos_diff, cv::Size(5, 5), 0);
     cv::GaussianBlur(neg_diff, neg_diff, cv::Size(5, 5), 0);
     
     cv::absdiff(pos_diff, neg_diff, diff_frame);
-    //sigma_frame = 16*diff_frame/sqrt_trained_avg;
+
+/*
+    cv::absdiff(workingFrame, prevFrame, diff_frame);
+    cv::GaussianBlur(diff_frame, diff_frame, cv::Size(5, 5), 0);
+*/
 }
 
 /*This function calculates ImageEntropy
@@ -352,7 +366,7 @@ float AnalyzerUnit::calculateEntropyFrame(cv::Mat& ImageFrame, bool debug){
     return ImgEntropy;
 }
 
-int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool debug){
+int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug){
 
     /*Memory for the image greyscale and histogram*/
     cv::Mat image_greyscale, image_greyscale_last, img_histogram, img_histogram_last, img_histogram_diff, img_histogram_sqrt;
@@ -400,9 +414,10 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
             float binEntry_last = img_histogram_last.at<float>(i, 0);
             if (pix_rem >0){
                 //float ratio = i ? TMath::Max((binEntry - binEntry_prev_prev/100)/binEntry_prev,float(0.)) : -1;
-                float ratio = i ? binEntry/binEntry_prev : -1;
+                float ratio = i>1 ? binEntry/binEntry_prev : -1;
                 if (ratio_avg < 0) ratio_avg = ratio;
                 else ratio_avg = (ratio_avg + ratio)/2; //A moving average. Far away bins should become less and less significant.
+                if (store) ratios[i].push_back(ratio);
                 
                 double bin_p_last = binEntry_last/pix_rem_last;
                 double bin_p = binEntry/pix_rem;
@@ -416,7 +431,20 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
                     std::cout << "binEntry " << i << ": " << binEntry << "; binEntry_last " << i << ": " << binEntry_last << "; ratio: " << ratio << "; last_ratio: " << last_ratio << std::endl;
                 }
                 
-                if ((last_ratio >= 0 && ratio > last_ratio*10) || ratio_avg > 0.5) return true;//cout << "TRIGGER!" << std::endl;
+                if ((last_ratio >= 0 && ratio > last_ratio*100) || (ratio > 0.1 && i>1)){
+                    if (ratio > 0.5) return true;   //Only ever gets this high if real bubble)
+                    //Above noise?
+                    double mean, sigma;
+                    for (int ii = 2; ii <= i; ii++){
+                        mean = CalcMean(ratios[ii]);
+                        sigma = CalcStdDev(ratios[ii],mean);
+                        if (debug) cout << "bin: " << ii << "; mean: " << mean << "; std_dev: " << sigma << std::endl;
+                        if (ratio > mean+sigma*10){
+                            if (debug) cout << "TRIGGER!" << std::endl;
+                            return true;
+                        }
+                    }
+                }
                 if (i <= loc_thres_max) this->loc_thres = i;    //If increasing loc_thres_max above 3, may have to tune the if statement here
                 
                 if (debug){
@@ -483,6 +511,26 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& DiffFrame_raw, cv::Mat&
  * To be used by std::sort for sorting files associated with
  * the camera frames. Not to be used otherwise.
  */
+
+double CalcMean(std::vector<double> &vec){
+    double sum = 0;
+    for (double& val : vec){
+        sum += val;
+    }
+    return sum/vec.size();
+}
+
+double CalcStdDev(std::vector<double> &vec, double mean){
+    double sum = 0;
+    for (double& val : vec){
+        sum += val*val;
+    }
+    return sqrt(sum/vec.size() - mean*mean);
+}
+
+double CalcStdDev(std::vector<double> &vec){
+    return CalcStdDev(vec,CalcMean(vec));
+}
 
 void sqrt_mat(cv::Mat& M){
   for(int i = 0; i < M.rows; i++)

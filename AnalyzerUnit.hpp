@@ -30,7 +30,7 @@ class AnalyzerUnit{
         void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame);
         float calculateEntropyFrame(cv::Mat& , bool debug = false);
         double calculateSignificanceFrame(cv::Mat& DiffFrame, cv::Mat& TrainedSigma, bool debug = false);
-        int checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool debug = false);
+        int checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -61,6 +61,8 @@ class AnalyzerUnit{
         
         /*Threshold for localizer*/
         int loc_thres;
+        
+        std::vector< std::vector<double> > ratios;
 
         /*Find the trigger frame function*/
         void FindTriggerFrame(bool nonStopMode, int startframe);
@@ -81,6 +83,9 @@ class AnalyzerUnit{
 };
 
 /*Helper functions*/
+double CalcMean(std::vector<double> &vec);
+double CalcStdDev(std::vector<double> &vec, double mean);
+double CalcStdDev(std::vector<double> &vec);
 bool frameSortFunc(std::string , std::string );
 void sqrt_mat(cv::Mat& M);
 
