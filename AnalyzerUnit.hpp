@@ -83,9 +83,8 @@ class AnalyzerUnit{
 };
 
 /*Helper functions*/
-double CalcMean(std::vector<double> &vec);
-double CalcStdDev(std::vector<double> &vec, double mean);
-double CalcStdDev(std::vector<double> &vec);
+double CalcMean(std::vector<double> &vec, int size = -1);
+double CalcStdDev(std::vector<double> &vec, double mean, int size = -1);
 bool frameSortFunc(std::string , std::string );
 void sqrt_mat(cv::Mat& M);
 

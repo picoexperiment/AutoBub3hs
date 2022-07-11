@@ -436,8 +436,8 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
                     //Above noise?
                     double mean, sigma;
                     for (int ii = 2; ii <= i; ii++){
-                        mean = CalcMean(ratios[ii]);
-                        sigma = CalcStdDev(ratios[ii],mean);
+                        mean = CalcMean(ratios[ii],ratios[0].size());
+                        sigma = CalcStdDev(ratios[ii],mean,ratios[0].size());
                         if (debug) cout << "bin: " << ii << "; mean: " << mean << "; std_dev: " << sigma << std::endl;
                         if (ratio > mean+sigma*10){
                             if (debug) cout << "TRIGGER!" << std::endl;
@@ -512,24 +512,22 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& DiffFrame_raw, cv::Mat&
  * the camera frames. Not to be used otherwise.
  */
 
-double CalcMean(std::vector<double> &vec){
+double CalcMean(std::vector<double> &vec, int size){
+    if (size == -1) size = vec.size();
     double sum = 0;
     for (double& val : vec){
         sum += val;
     }
-    return sum/vec.size();
+    return sum/size;
 }
 
-double CalcStdDev(std::vector<double> &vec, double mean){
+double CalcStdDev(std::vector<double> &vec, double mean, int size){
+    if (size == -1) size = vec.size();
     double sum = 0;
     for (double& val : vec){
         sum += val*val;
     }
-    return sqrt(sum/vec.size() - mean*mean);
-}
-
-double CalcStdDev(std::vector<double> &vec){
-    return CalcStdDev(vec,CalcMean(vec));
+    return sqrt(sum/size - mean*mean);
 }
 
 void sqrt_mat(cv::Mat& M){
