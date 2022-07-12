@@ -129,8 +129,8 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     }
 
 
-    cv::Mat workingFrame, diff_frame, subtr_frame, ProcFrame, sigma_frame, subtr_avg_frame;
-    cv::Mat prevFrame, prevDiff;
+    cv::Mat workingFrame, diff_frame, subtr_frame, sigma_frame, subtr_avg_frame;
+    cv::Mat prevFrame, prevDiff, prevPrevFrame;
 
     /*Static variable to store the threshold entropy WHERE USED??*/
     float entropyThreshold;
@@ -175,6 +175,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     ProcessFrame(workingFrame,prevFrame,prevDiff);*/
     
     this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], prevFrame);
+    prevPrevFrame = prevFrame;
 
     /* GaussianBlur can help with noisy images */
     //cv::GaussianBlur(comparisonFrame, comparisonFrame, cv::Size(5, 5), 0)
@@ -204,7 +205,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
         /*BackgroundSubtract*/
-        ProcessFrame(workingFrame,prevFrame,subtr_frame,5,i);
+        ProcessFrame(workingFrame,prevPrevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
 
         /*Find LBP and then calculate Entropy*/
         //subtr_frame = lbpImage(diff_frame);
@@ -245,7 +246,6 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //std::cout<<"Frame Entropy: "<<singleEntropy<<std::endl;
 
         /*Nothing works better than manual entropy settings. :-(*/
-        prevFrame = workingFrame;
         if (singleEntropy > entropyThreshold and i > this->minEvalFrameNumber) {
             //std::cout << this->EventID << " " << this->CameraFrames[i] << " " << singleEntropy << std::endl;
             /* LED flicker check: check if the following frame is also
@@ -269,14 +269,15 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                 //Note: This block skips over anomalies in the image data and noise triggers.
                 //      Set "numFramesCheck" to 0 if you want to trigger on these anomalies.
                 int numFramesCheck = 2;
+                cv::Mat tempPrevPrevFrame = prevFrame;
                 cv::Mat tempPrevFrame = workingFrame;
                 cv::Mat peakFrame;
-                for (int ii = 1; ii <= numFramesCheck; ii++){
+                for (int ii = 1; ii <= numFramesCheck && ii+i < this->CameraFrames.size(); ii++){   //This means a trigger cannot occur after frame # 70-numFramesCheck
                 
                     this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);
 
                     //cv::absdiff(workingFrame, prevFrame, diff_frame);
-                    ProcessFrame(peakFrame,tempPrevFrame,diff_frame,5,i+ii);
+                    ProcessFrame(peakFrame,tempPrevPrevFrame,diff_frame,5,nonStopMode ? -1 : i+ii);
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
 
                     //singleEntropy = this->calculateEntropyFrame(diff_frame);
@@ -291,6 +292,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     }
                     //else: check next frame
                     
+                    tempPrevPrevFrame = tempPrevFrame;
                     tempPrevFrame = peakFrame;
                 }
                 if (this->TriggerFrameIdentificationStatus == 0) break;
@@ -298,6 +300,8 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
             }
 
         }
+        prevPrevFrame = prevFrame;
+        prevFrame = workingFrame;
     }
 
 
@@ -322,12 +326,12 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
     /*
     pos_diff -= blur_sigma;
     neg_diff -= blur_sigma;
-    */
+    *//*
     if (img_num >= 0){
         imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_"+this->CameraFrames[img_num], pos_diff);
         imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_"+this->CameraFrames[img_num], neg_diff);
     }
-    
+    */
     cv::absdiff(pos_diff, neg_diff, diff_frame);
 
 /*
