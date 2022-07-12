@@ -30,6 +30,7 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
     this->MatTrigFrame = 0;
     this->loc_thres = 3;
     this->ratios.resize(256);
+    this->pix_counts.resize(256);
     this->FileParser = Parser;
 
     this->FileParser->ParseAndSortFramesInFolder(this->EventID, this->CameraNumber, this->CameraFrames);
@@ -128,14 +129,14 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     }
 
 
-    cv::Mat workingFrame, diff_frame, subtr_frame, ProcFrame, sigma_frame, sqrt_frame;
+    cv::Mat workingFrame, diff_frame, subtr_frame, ProcFrame, sigma_frame, subtr_avg_frame;
     cv::Mat prevFrame, prevDiff;
 
     /*Static variable to store the threshold entropy WHERE USED??*/
     float entropyThreshold;
     //if(this->CameraNumber==2) entropyThreshold = 0.0009;
     //else entropyThreshold = 0.0003;
-    entropyThreshold = 0.5;
+    entropyThreshold = 3.5;
     
 
     /*Variable to store the current entropy in*/
@@ -164,6 +165,8 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     if (startframe == 1){
         ratios.clear();
         ratios.resize(256);
+        pix_counts.clear();
+        pix_counts.resize(256);
     }
   
     cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
@@ -201,7 +204,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
         /*BackgroundSubtract*/
-        ProcessFrame(workingFrame,prevFrame,subtr_frame);
+        ProcessFrame(workingFrame,prevFrame,subtr_frame,5,i);
 
         /*Find LBP and then calculate Entropy*/
         //subtr_frame = lbpImage(diff_frame);
@@ -209,7 +212,10 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //singleEntropy = this->calculateEntropyFrame(sigma_frame,!nonStopMode);
         singleEntropy = this->checkTriggerDerivative(subtr_frame, prevDiff,true,!nonStopMode);
         //singleEntropy = this->calculateSignificanceFrame(diff_frame,this->TrainedData->TrainedSigmaImage,!nonStopMode);
-
+        /*
+        ProcessFrame(workingFrame,TrainedData->TrainedAvgImage,subtr_avg_frame);
+        std::cout << this->checkTriggerDerivative(subtr_avg_frame, prevDiff,false,!nonStopMode);
+*/
         /* ****************
          * Debug Point here
          * **************** */
@@ -270,14 +276,15 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);
 
                     //cv::absdiff(workingFrame, prevFrame, diff_frame);
-                    ProcessFrame(peakFrame,tempPrevFrame,diff_frame);
+                    ProcessFrame(peakFrame,tempPrevFrame,diff_frame,5,i+ii);
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
 
                     //singleEntropy = this->calculateEntropyFrame(diff_frame);
                     singleEntropy = this->checkTriggerDerivative(diff_frame, prevDiff,false,!nonStopMode);
                     //singleEntropy = this->calculateSignificanceFrame(diff_frame,this->TrainedData->TrainedSigmaImage);
+                    //std::cout << "singleEntropy: " << singleEntropy << "; 2/3 * entropyThreshold: " << 2/3 * entropyThreshold << std::endl;
 
-                    if (singleEntropy <= 2/3 * entropyThreshold) break;
+                    if (singleEntropy <= /*2./3 **/ entropyThreshold) break;
                     else if (ii == numFramesCheck){
                         this->TriggerFrameIdentificationStatus = 0;
                         this->MatTrigFrame = i;
@@ -303,14 +310,23 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
 
 }
 
-void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame){
-    cv::Mat pos_diff, neg_diff;
+void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam, int img_num){
+    cv::Mat pos_diff, neg_diff, blur_sigma;
 
     pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
     neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
 
-    cv::GaussianBlur(pos_diff, pos_diff, cv::Size(5, 5), 0);
-    cv::GaussianBlur(neg_diff, neg_diff, cv::Size(5, 5), 0);
+    cv::GaussianBlur(pos_diff, pos_diff, cv::Size(blur_diam, blur_diam), 0);
+    cv::GaussianBlur(neg_diff, neg_diff, cv::Size(blur_diam, blur_diam), 0);
+    //cv::GaussianBlur(this->TrainedData->TrainedSigmaImage, blur_sigma, cv::Size(blur_diam, blur_diam), 0);
+    /*
+    pos_diff -= blur_sigma;
+    neg_diff -= blur_sigma;
+    */
+    if (img_num >= 0){
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_"+this->CameraFrames[img_num], pos_diff);
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_"+this->CameraFrames[img_num], neg_diff);
+    }
     
     cv::absdiff(pos_diff, neg_diff, diff_frame);
 
@@ -366,7 +382,7 @@ float AnalyzerUnit::calculateEntropyFrame(cv::Mat& ImageFrame, bool debug){
     return ImgEntropy;
 }
 
-int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug){
+double AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug){
 
     /*Memory for the image greyscale and histogram*/
     cv::Mat image_greyscale, image_greyscale_last, img_histogram, img_histogram_last, img_histogram_diff, img_histogram_sqrt;
@@ -407,6 +423,10 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
     int pix_rem = ImageFrame.total();
     int pix_rem_last = LastFrame.total();
     //for (int i=img_histogram.rows-1; i>=0; i--){
+    double significance = 0;
+    double mean, sigma;
+    int first_over_3p5 = loc_thres_max;
+    int max_adc = 0;
     for (int i=0; i<img_histogram.rows; i++){
             float binEntry = img_histogram.at<float>(i, 0);
             float binEntry_prev = i ? img_histogram.at<float>(i-1, 0) : -1;
@@ -417,7 +437,10 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
                 float ratio = i>1 ? binEntry/binEntry_prev : -1;
                 if (ratio_avg < 0) ratio_avg = ratio;
                 else ratio_avg = (ratio_avg + ratio)/2; //A moving average. Far away bins should become less and less significant.
-                if (store) ratios[i].push_back(ratio);
+                if (store){
+                    ratios[i].push_back(ratio);
+                    pix_counts[i].push_back(binEntry);
+                }
                 
                 double bin_p_last = binEntry_last/pix_rem_last;
                 double bin_p = binEntry/pix_rem;
@@ -428,24 +451,45 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
                 double sig = TMath::Abs(bin_p_last-bin_p)/sqrt(pow(stddev,2)+pow(stddev_last,2));
                 
                 if (debug){
-                    std::cout << "binEntry " << i << ": " << binEntry << "; binEntry_last " << i << ": " << binEntry_last << "; ratio: " << ratio << "; last_ratio: " << last_ratio << std::endl;
+                    std::cout << "binEntry " << i << ": " << binEntry << "; ";// << "; binEntry_last " << i << ": " << binEntry_last << "; ratio: " << ratio << std::endl;//"; last_ratio: " << last_ratio << std::endl;
                 }
                 
-                if ((last_ratio >= 0 && ratio > last_ratio*100) || (ratio > 0.1 && i>1)){
-                    if (ratio > 0.5) return true;   //Only ever gets this high if real bubble)
-                    //Above noise?
-                    double mean, sigma;
-                    for (int ii = 2; ii <= i; ii++){
-                        mean = CalcMean(ratios[ii],ratios[0].size());
-                        sigma = CalcStdDev(ratios[ii],mean,ratios[0].size());
-                        if (debug) cout << "bin: " << ii << "; mean: " << mean << "; std_dev: " << sigma << std::endl;
-                        if (ratio > mean+sigma*10){
-                            if (debug) cout << "TRIGGER!" << std::endl;
-                            return true;
+                if (i > 1){
+                    //if ((last_ratio >= 0 && ratio > last_ratio*100) || (ratio > 0.1 && i>1)){
+                    mean = CalcMean(pix_counts[i],pix_counts[0].size());
+                    sigma = CalcStdDev(pix_counts[i],mean,pix_counts[0].size());
+                    //std::cout << "sigma (before): " << sigma << "; pow(sigma,2): " << pow(sigma,2) << "; pow(pix_counts[0].size() - 5,2): " << pow(pix_counts[0].size() - 5,2) << "; ";
+                    //std::cout << "pix_counts[0].size(): " << pix_counts[0].size() << "; pix_counts[0].size() - 5: " << pix_counts[0].size() - 5 << "; pow(pix_counts[0].size() - 5,2): " << pow(pix_counts[0].size() - 5,2) << "; ";
+                    //if (pix_counts[0].size() < 5) sigma = sqrt(pow(sigma,2) + pow(5 - pix_counts[0].size(),2)); //Reduce the significance when low stats
+                    //std::cout << "Add significance: " << (binEntry-mean)/sigma << "; mean: " << mean << "; sigma: " << sigma << std::endl;
+                    if (binEntry > mean) significance += (binEntry-mean)/sigma;
+                    if (debug) std::cout << "significance so far: " << significance << std::endl;
+                    /*
+                    if (binEntry > CalcMean(pix_counts[i]) && i>1){
+                        if (ratio > 0.5) return true;   //Only ever gets this high if real bubble)
+                        //Above noise?
+                        for (int ii = 2; ii <= i; ii++){
+                            mean = CalcMean(ratios[ii],ratios[0].size());
+                            sigma = CalcStdDev(ratios[ii],mean,ratios[0].size());
+                            if (debug) cout << "bin: " << ii << "; mean: " << mean << "; std_dev: " << sigma << std::endl;
+                            if (ratio > mean+sigma*10){
+                                if (debug) cout << "TRIGGER!" << std::endl;
+                                return true;
+                            }
                         }
                     }
+                    */
+                    //if (i <= loc_thres_max) this->loc_thres = i;    //If increasing loc_thres_max above 3, may have to tune the if statement here
                 }
-                if (i <= loc_thres_max) this->loc_thres = i;    //If increasing loc_thres_max above 3, may have to tune the if statement here
+                
+                if (significance > 3.5 && i < first_over_3p5) first_over_3p5 = i;
+                
+                if (i > max_adc) max_adc = i;
+                
+                if (store){
+                    this->loc_thres = TMath::Max(first_over_3p5-1,max_adc-1);
+                    if (this->loc_thres > loc_thres_max) this->loc_thres = loc_thres_max;
+                }
                 
                 if (debug){
                     //std::cout << */"; ratio_avg: " << ratio_avg/* << "; sig: " << sig*/;
@@ -465,8 +509,10 @@ int AnalyzerUnit::checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame
                 //return i;
             }
     }
+    
+    //std::cout << "significance: " << significance << std::endl;
 
-    return false;
+    return significance;
 }
 
 double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& DiffFrame_raw, cv::Mat& TrainedSigma, bool debug){
@@ -512,19 +558,21 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& DiffFrame_raw, cv::Mat&
  * the camera frames. Not to be used otherwise.
  */
 
-double CalcMean(std::vector<double> &vec, int size){
+template <typename num>
+double CalcMean(std::vector<num> &vec, int size){
     if (size == -1) size = vec.size();
     double sum = 0;
-    for (double& val : vec){
+    for (num& val : vec){
         sum += val;
     }
     return sum/size;
 }
 
-double CalcStdDev(std::vector<double> &vec, double mean, int size){
+template <typename num>
+double CalcStdDev(std::vector<num> &vec, double mean, int size){
     if (size == -1) size = vec.size();
     double sum = 0;
-    for (double& val : vec){
+    for (num& val : vec){
         sum += val*val;
     }
     return sqrt(sum/size - mean*mean);

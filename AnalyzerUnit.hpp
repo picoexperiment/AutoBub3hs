@@ -27,10 +27,10 @@ class AnalyzerUnit{
         int firstTrainingFrames = 1;    //CR: This doesn't seem to do anything anymore
         int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
-        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame);
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
         float calculateEntropyFrame(cv::Mat& , bool debug = false);
         double calculateSignificanceFrame(cv::Mat& DiffFrame, cv::Mat& TrainedSigma, bool debug = false);
-        int checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug = false);
+        double checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -63,6 +63,7 @@ class AnalyzerUnit{
         int loc_thres;
         
         std::vector< std::vector<double> > ratios;
+        std::vector< std::vector<int> > pix_counts;
 
         /*Find the trigger frame function*/
         void FindTriggerFrame(bool nonStopMode, int startframe);
@@ -83,8 +84,10 @@ class AnalyzerUnit{
 };
 
 /*Helper functions*/
-double CalcMean(std::vector<double> &vec, int size = -1);
-double CalcStdDev(std::vector<double> &vec, double mean, int size = -1);
+template <typename num>
+double CalcMean(std::vector<num> &vec, int size = -1);
+template <typename num>
+double CalcStdDev(std::vector<num> &vec, double mean, int size = -1);
 bool frameSortFunc(std::string , std::string );
 void sqrt_mat(cv::Mat& M);
 

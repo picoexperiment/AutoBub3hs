@@ -212,7 +212,20 @@ void L3Localizer::rem_unique(std::vector<cv::Rect>& L2SearchAreas, std::vector<c
  * that the code has to look at. So this should make it more accurate
  *
  *  * *****************************************************************************/
+/*
+void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam){
+    cv::Mat pos_diff, neg_diff;
 
+    pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
+    neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
+
+    cv::GaussianBlur(pos_diff, pos_diff, cv::Size(blur_diam, blur_diam), 0);
+    cv::GaussianBlur(neg_diff, neg_diff, cv::Size(blur_diam, blur_diam), 0);
+    
+    cv::absdiff(pos_diff, neg_diff, diff_frame);
+
+}
+*/
 void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
@@ -240,15 +253,18 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     }
 
     overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;
-    
-    cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-    cv::threshold(overTheSigma, overTheSigma, this->loc_thres, 255, cv::THRESH_TOZERO);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_OvrThe6Sigma.png", overTheSigma);
-
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_02_OvrThe6Sigma.png", overTheSigma);
 
     
+    cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
+
+    
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_PreOtsu.png", overTheSigma);
+    
+    cv::threshold(overTheSigma, overTheSigma, this->loc_thres, 255, cv::THRESH_TOZERO);
+    if (!this->nonStopMode) std::cout << "this->loc_thres: " << this->loc_thres << std::endl;
     cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
     /*Debug*/

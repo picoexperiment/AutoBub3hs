@@ -329,7 +329,7 @@ int main(int argc, char** argv)
         /*We need the actual event number in case folders with events are missing*/
         int actualEventNumber = atoi(EventList[evi].c_str());
         
-        if (event_user > 0 && evi != event_user) continue;
+        if (event_user >= 0 && evi != event_user) continue;
         
         printf("\rProcessing event: %s / %d  ... ", EventList[evi].c_str(), static_cast<int>(EventList.size())-1);
         advance_cursor(); /*Fancy coursors!*/
