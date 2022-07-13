@@ -26,7 +26,7 @@ AnalyzerUnit::AnalyzerUnit(std::string EventID, std::string ImageDir, int Camera
     this->CameraNumber=CameraNumber;
     this->EventID=EventID;
 
-    this->TrainedData = new Trainer(**TrainedData);
+    this->TrainedData = new Trainer(**TrainedData); //Uses copy constructor. Not sure why it's done this way...
     this->MatTrigFrame = 0;
     this->loc_thres = 3;
     this->ratios.resize(256);
@@ -182,6 +182,12 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
 
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
+    
+    bool twoFrameOffset = true;
+    //Lose some sensitivity to slow bubbles if training sample size is too small.
+    //Needed to deal with non-stochastic noise introduced by changes in local freon density.
+    if (this->TrainedData->TrainingSetSize < 4) twoFrameOffset = false;
+    if (!nonStopMode) std::cout << "twoFrameOffset: " << twoFrameOffset << "; this->TrainedData->TrainingSetSize: " << this->TrainedData->TrainingSetSize << std::endl;
 
     for (int i = startframe; i < this->CameraFrames.size(); i++) {
 //    for (int i = 1; i < 30; i++) {
@@ -205,7 +211,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //cv::GaussianBlur(workingFrame, workingFrame, cv::Size(5, 5), 0)
 
         /*BackgroundSubtract*/
-        ProcessFrame(workingFrame,prevPrevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
+        ProcessFrame(workingFrame,twoFrameOffset?prevPrevFrame:prevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
 
         /*Find LBP and then calculate Entropy*/
         //subtr_frame = lbpImage(diff_frame);
@@ -277,7 +283,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);
 
                     //cv::absdiff(workingFrame, prevFrame, diff_frame);
-                    ProcessFrame(peakFrame,tempPrevPrevFrame,diff_frame,5,nonStopMode ? -1 : i+ii);
+                    ProcessFrame(peakFrame,twoFrameOffset?tempPrevPrevFrame:tempPrevFrame,diff_frame,5,nonStopMode ? -1 : i+ii);
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
 
                     //singleEntropy = this->calculateEntropyFrame(diff_frame);
@@ -319,6 +325,11 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
 
     pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
     neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
+    if (img_num >= 0){
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_"+this->CameraFrames[img_num], pos_diff);
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_"+this->CameraFrames[img_num], neg_diff);
+    }
+    
 
     cv::GaussianBlur(pos_diff, pos_diff, cv::Size(blur_diam, blur_diam), 0);
     cv::GaussianBlur(neg_diff, neg_diff, cv::Size(blur_diam, blur_diam), 0);
@@ -326,11 +337,6 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
     /*
     pos_diff -= blur_sigma;
     neg_diff -= blur_sigma;
-    *//*
-    if (img_num >= 0){
-        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_"+this->CameraFrames[img_num], pos_diff);
-        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_"+this->CameraFrames[img_num], neg_diff);
-    }
     */
     cv::absdiff(pos_diff, neg_diff, diff_frame);
 

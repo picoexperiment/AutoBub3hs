@@ -16,11 +16,11 @@
 //#include "ImageEntropyMethods/ImageEntropyMethods.hpp"
 //#include "LBP/LBPUser.hpp"
 
-#define debug false
+//#define debug false
 
 
 
-Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder, Parser* FileParser)
+Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string EventDir, std::string ImageFormat, std::string ImageFolder, Parser* FileParser, bool debug)
 {
     /*Give the properties required to make the object - the identifiers i.e. the camera number, and location*/
     this->camera=camera;
@@ -28,6 +28,7 @@ Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string Ev
     this->EventDir = EventDir;
     this->ImageFormat = ImageFormat;
     this->ImageFolder = ImageFolder;
+    this->debug = debug;
 
     this->FileParser = FileParser;
 
@@ -37,6 +38,8 @@ Trainer::Trainer(int camera,  std::vector<std::string> EventList, std::string Ev
     this->SearchPattern = ImageFormat.substr(searchStart, searchStart + searchCode.size() + 5);
 
     this->StatusCode = 0;
+    
+    this->TrainingSetSize = 0;
 }
 
 Trainer::Trainer(const Trainer &other_trainer){
@@ -65,6 +68,8 @@ Trainer::Trainer(const Trainer &other_trainer){
     this->SearchPattern = other_trainer.SearchPattern;
 
     this->FileParser = other_trainer.FileParser->clone();
+    
+    this->TrainingSetSize = other_trainer.TrainingSetSize;
 }
 
 Trainer::~Trainer(void ) {
@@ -152,6 +157,9 @@ void Trainer::CalculateMeanSigmaImageVector(std::vector<cv::Mat>& ImagesArray, c
 
 
     std::vector<cv::Mat>::size_type processingFrame;
+    
+    TrainingSetSize = numImagesToProcess;
+    if (debug) std::cout << "TrainingSetSize: " << TrainingSetSize << std::endl;
 
     /*few temp variables*/
     float temp_variance=0;

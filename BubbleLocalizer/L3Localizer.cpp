@@ -235,10 +235,13 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << "-----" << std::endl;
 
     /*Construct the frame differences and LBPImage Frames*/
-    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma;
+    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma, Blurred;
     cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
     cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
+    //ProcessFrame(this->triggerFrame,this->TrainedData->TrainedAvgImage,TempFrameDiffTrig,3);
+    //ProcessFrame(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig,3);
     cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
+    ProcessFrame(this->triggerFrame, this->preTrigFrame, overTheSigma,5);
 
     /*Debug*/
     // DebugPeek must be created by user for these to be saved
@@ -252,17 +255,28 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 //        std::cout << "DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png" << std::endl;
     }
 
-    overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;
+    //overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;
 
     /*Debug*/
     if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_02_OvrThe6Sigma.png", overTheSigma);
 
+    //This didn't help at all... I need to check whether difference arises from the way noise is dealt with.
+    //  At this point I'm getting more willing to make the ProcessFrame function a standard part of the localizer...    
+    /*for (int blur_diam = 3; blur_diam <= 5; blur_diam++){
+        
+        if (!this->nonStopMode) std::cout << "Trying blur diameter of " << blur_diam << std::endl;
     
-    cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
-
-    
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_PreOtsu.png", overTheSigma);
-    
+        cv::blur(overTheSigma,Blurred, cv::Size(blur_diam,blur_diam));
+        
+        if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_PreOtsu.png", Blurred);
+        
+        cv::threshold(Blurred, Blurred, this->loc_thres, 255, cv::THRESH_TOZERO);
+        
+        if (!this->nonStopMode) std::cout << "cv::countNonZero(Blurred): " << cv::countNonZero(Blurred) << std::endl;
+        if (cv::countNonZero(Blurred) > 0) break;
+    }
+    */
+    //cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
     cv::threshold(overTheSigma, overTheSigma, this->loc_thres, 255, cv::THRESH_TOZERO);
     if (!this->nonStopMode) std::cout << "this->loc_thres: " << this->loc_thres << std::endl;
     cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
@@ -735,10 +749,18 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     /*Assign the three useful frames*/
 //    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
+    int prev_offset = 2;
+    //Slight pressure changes over the course of the run change the local density of the freon, which results in some intensity fluctuations near the bellows.
+    //This can trigger the algorithm at the beginning of the event, so we sacrifice some sensitivity at the beginning of the event to compensate for a lack of sigma frame.
+    //It's possible to have a trigger in the first frames as well, and there's no easy way to tell the difference other than to reduce the frame difference.
+    if (this->TrainedData->TrainingSetSize < 4){
+        prev_offset = 1;
+        if (!this->nonStopMode) std::cout << "Setting prev_offset to " << prev_offset << std::endl;
+    }
 
     //this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
     this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame], this->triggerFrame);
-    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame-1], this->preTrigFrame);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame-prev_offset], this->preTrigFrame);    //Use the frame two frames back in case bubble actually started emerging in trig-1
     this->presentationFrame = triggerFrame.clone();
     //cv::cvtColor(this->presentationFrame, this->presentationFrame, cv::COLOR_GRAY2BGR);
     //this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);

@@ -27,7 +27,6 @@ class AnalyzerUnit{
         int firstTrainingFrames = 1;    //CR: This doesn't seem to do anything anymore
         int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
-        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
         float calculateEntropyFrame(cv::Mat& , bool debug = false);
         double calculateSignificanceFrame(cv::Mat& DiffFrame, cv::Mat& TrainedSigma, bool debug = false);
         double checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug = false);
@@ -54,6 +53,9 @@ class AnalyzerUnit{
 
         /*Produces the text output for PICO format*/
         void ProduceOutput(void );
+        
+        /*Perform subtraction and blurring on image before checking for trigger*/
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
 
         /*Variable holding the RotatedRect bubble array and the trigger frame*/
         std::vector<cv::RotatedRect> BubblePixelPos;

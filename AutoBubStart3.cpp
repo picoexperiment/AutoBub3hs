@@ -105,7 +105,7 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
             {
                 Pico60Writer->stageCameraOutputError(camera,AnalyzerCGeneric->TriggerFrameIdentificationStatus, actualEventNumber);
                 break;
-            }
+            }break;
         } while (AnalyzerCGeneric->BubbleList.size()==0);
 
     /*The exception block for camera specific crashes. outputs -6 for the error*/
@@ -199,6 +199,8 @@ int main(int argc, char** argv)
     std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
 
     std::string eventDir = dataLoc + "/" + run_number + "/";
+    
+    if (out_dir[out_dir.length()-1] != '/') out_dir += "/";
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.
@@ -276,7 +278,7 @@ int main(int argc, char** argv)
     std::vector<Trainer*> Trainers;
     for (int icam = 0; icam < numCams; icam++){
         Parser *tp = FileParser->clone();
-        Trainers.push_back(new Trainer(icam, EventList, eventDir, imageFormat, imageFolder, tp));
+        Trainers.push_back(new Trainer(icam, EventList, eventDir, imageFormat, imageFolder, tp, debug_mode/100));
     }
     //Trainer *TrainC1 = new Trainer(1, EventList, eventDir, imageFormat, imageFolder);
     //Trainer *TrainC2 = new Trainer(2, EventList, eventDir, imageFormat, imageFolder);
