@@ -219,10 +219,11 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << "-----" << std::endl;
 
     /*Construct the frame differences and LBPImage Frames*/
-    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma;
-    cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
-    cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
-    cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
+    cv::Mat overTheSigma;
+    //cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig; //Not used; replaced by ProcessFrame
+    //cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
+    //cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
+    //cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
     ProcessFrame(this->triggerFrame, this->preTrigFrame, overTheSigma,5);
 
     /*Debug*/
@@ -231,9 +232,9 @@ void L3Localizer::CalculateInitialBubbleParams(void )
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_000_AvgImage.png", this->TrainedData->TrainedAvgImage);
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_00_PreTrigFrame.png", this->preTrigFrame);
         cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0_TrigFrame.png", this->triggerFrame);
-        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0001_TrigTrainAbsDiff.png", TempFrameDiffTrig);
-        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_001_PreTrigTrainAbsDiff.png", TempFrameDiffPreTrig);
-        cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_01_TotalAbsDiff.png", NewFrameDiffTrig);
+        //cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_0001_TrigTrainAbsDiff.png", TempFrameDiffTrig);
+        //cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_001_PreTrigTrainAbsDiff.png", TempFrameDiffPreTrig);
+        //cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_01_TotalAbsDiff.png", NewFrameDiffTrig);
 //        std::cout << "DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png" << std::endl;
     }
 
@@ -335,10 +336,10 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 
     //NewFrameDiffTrig.refcount=0;
     //overTheSigma.refcount=0;
-    NewFrameDiffTrig.release();
+    //NewFrameDiffTrig.release();
     overTheSigma.release();
-    TempFrameDiffTrig.release();
-    TempFrameDiffPreTrig.release();
+    //TempFrameDiffTrig.release();
+    //TempFrameDiffPreTrig.release();
     //debugShow(this->presentationFrame);
 }
 

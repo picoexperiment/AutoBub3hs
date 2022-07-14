@@ -126,8 +126,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     }
 
 
-    cv::Mat workingFrame, diff_frame, subtr_frame, sigma_frame, subtr_avg_frame;
-    cv::Mat prevFrame, prevDiff, prevPrevFrame;
+    cv::Mat workingFrame, subtr_frame, prevFrame, prevPrevFrame;
 
     /*Static variable to store the threshold entropy WHERE USED??*/
     float entropyThreshold;
@@ -153,9 +152,6 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         return;
     }
     */
-
-    cv::Mat sqrt_trained_avg = this->TrainedData->TrainedAvgImage.clone();
-    sqrt_mat(sqrt_trained_avg);
     
     if (startframe < 1) startframe = 1;
     
@@ -164,7 +160,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         pix_counts.resize(256);
     }
   
-    cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
+    //cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
     
     this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], prevFrame);
     if (startframe < 2) prevPrevFrame = prevFrame;
@@ -217,7 +213,6 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
           std::cout<<"Entropy of BkgSub "<<i+30<<" image: "<<singleEntropy<<"\n";
           imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i], subtr_frame/*debug_mask*/);
         }
-        prevDiff = subtr_frame.clone();
 
         /*Calculate entropy of ROI*/
         /*if (i==1 and singleEntropy>0.0005){
@@ -258,7 +253,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                 int numFramesCheck = 2;
                 cv::Mat tempPrevPrevFrame = prevFrame;
                 cv::Mat tempPrevFrame = workingFrame;
-                cv::Mat peakFrame;
+                cv::Mat peakFrame, diff_frame;
                 for (int ii = 1; ii <= numFramesCheck && ii+i < this->CameraFrames.size(); ii++){   //This means a trigger cannot occur after frame # 70-numFramesCheck
                 
                     this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);

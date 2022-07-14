@@ -99,13 +99,14 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
                 else {
                     Pico60Writer->stageCameraOutputError(camera,-8, actualEventNumber);
                     break;
-                    }
+                }
             }
             else
             {
                 Pico60Writer->stageCameraOutputError(camera,AnalyzerCGeneric->TriggerFrameIdentificationStatus, actualEventNumber);
                 break;
-            }   //std::cout << "BREAKING!!! THIS IS FOR DEBUGGING AND SHOULD NOT BE ACTIVATED!!!" << std::endl; break;
+            }
+            //std::cout << "BREAKING!!! THIS LINE IS FOR DEBUGGING AND SHOULD NOT BE ACTIVATED!!!" << std::endl; break;
         } while (AnalyzerCGeneric->BubbleList.size()==0);
 
     /*The exception block for camera specific crashes. outputs -6 for the error*/
@@ -136,8 +137,8 @@ std::string usage(){
                 "  -h, --help\t\t\tgive this help message\n"
                 "  -z, --zip\t\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
                 "  -D, --data_series = Str\tname of the data series, e.g. 40l-19, 30l-16, etc.\n"
+                "  -e, --event = Int\t\tspecify a single event to process. Mostly just useful for debugging and testing\n"
                 "  --debug = Int\t\t\t3 digit int; eg: 101: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug\n"
-                "  -e, --event = Int\t\tspecify a single event to process. Probably just useful for debugging and testing\n"
     );
     return msg;
 }
@@ -150,8 +151,8 @@ int main(int argc, char** argv)
     std::string out_dir;
     std::string mask_dir;
     std::string data_series;
-    int debug_mode = 0;
     int event_user = -1;
+    int debug_mode = 0;
     bool zipped = false;
 
     // generic options
@@ -164,8 +165,8 @@ int main(int argc, char** argv)
         ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
         ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
         ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
-        ("debug", po::value<int>(&debug_mode), "debug mode: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug")
         ("event,e", po::value<int>(&event_user), "specify a single event to process")
+        ("debug", po::value<int>(&debug_mode), "debug mode: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug")
     ;
 
     // This part is required for positional arguments.  The call signature is "add(<arg>, <# expected arguments)
