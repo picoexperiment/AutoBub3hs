@@ -28,11 +28,6 @@ set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
 #MESSAGE( STATUS "Found : ${SQLITE3_LIBRARIES}" )
 
-#Compile against ROOT. Currently just using TMath.h to calculate Chi2 prob.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} .)   #Use FindROOT.cmake
-find_package(ROOT)
-set(CMAKE_EXE_LINKER_FLAGS "-Wno-write-string -I${ROOT_INCLUDE_DIR}  ${ROOT_LIBRARIES}")
-
 #SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O3 -march=native -m64 ${OpenMP_CXX_FLAGS} -I${OpenCV_INCLUDE_DIRS}/")
 SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O0 -march=native -m64 ${OpenMP_CXX_FLAGS} -I${OpenCV_INCLUDE_DIRS}/ -ggdb")
 #SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O0 -march=native -m64 ${OpenMP_CXX_FLAGS} -ggdb")
@@ -41,7 +36,7 @@ file(GLOB LBP_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/LBP/*.hpp)
 file(GLOB LBP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/LBP/*.cpp)
 
 add_library(lbpuser SHARED ${LBP_SOURCES})
-target_link_libraries(lbpuser ${OpenCV_LIBS} ${ROOT_LIBRARIES})
+target_link_libraries(lbpuser ${OpenCV_LIBS})
 set_property(TARGET lbpuser PROPERTY PUBLIC_HEADER ${LBP_HEADERS})
 
 
@@ -103,6 +98,6 @@ set(HEADERS
 
 add_executable( abub3hs AutoBubStart3.cpp )
 target_include_directories(abub3hs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minizip-ng/)
-target_link_libraries( abub3hs ${OpenCV_LIBS} ${ROOT_LIBRARIES} MathMore ${SOURCE} ${HEADERS} lbpuser
+target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser
     AbubEntropySubsystem AbubUtility minizip)
 #target_link_libraries( abub ${OpenCV_LIBS} ${SOURCE} ${HEADERS} )

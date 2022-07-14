@@ -212,34 +212,16 @@ void L3Localizer::rem_unique(std::vector<cv::Rect>& L2SearchAreas, std::vector<c
  * that the code has to look at. So this should make it more accurate
  *
  *  * *****************************************************************************/
-/*
-void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam){
-    cv::Mat pos_diff, neg_diff;
 
-    pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
-    neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
-
-    cv::GaussianBlur(pos_diff, pos_diff, cv::Size(blur_diam, blur_diam), 0);
-    cv::GaussianBlur(neg_diff, neg_diff, cv::Size(blur_diam, blur_diam), 0);
-    
-    cv::absdiff(pos_diff, neg_diff, diff_frame);
-
-}
-*/
 void L3Localizer::CalculateInitialBubbleParams(void )
 {
-
-
-    //this->nonStopMode=false;
 
     if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << "-----" << std::endl;
 
     /*Construct the frame differences and LBPImage Frames*/
-    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma, Blurred;
+    cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig, overTheSigma;
     cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
     cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
-    //ProcessFrame(this->triggerFrame,this->TrainedData->TrainedAvgImage,TempFrameDiffTrig,3);
-    //ProcessFrame(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig,3);
     cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
     ProcessFrame(this->triggerFrame, this->preTrigFrame, overTheSigma,5);
 
@@ -255,28 +237,12 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 //        std::cout << "DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_TrigTrainAbsDiff.png" << std::endl;
     }
 
-    //overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;
+    //overTheSigma = NewFrameDiffTrig - 6./sqrt(2)*this->TrainedData->TrainedSigmaImage;    //Now done in ProcessFrame
 
     /*Debug*/
     if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_02_OvrThe6Sigma.png", overTheSigma);
 
-    //This didn't help at all... I need to check whether difference arises from the way noise is dealt with.
-    //  At this point I'm getting more willing to make the ProcessFrame function a standard part of the localizer...    
-    /*for (int blur_diam = 3; blur_diam <= 5; blur_diam++){
-        
-        if (!this->nonStopMode) std::cout << "Trying blur diameter of " << blur_diam << std::endl;
-    
-        cv::blur(overTheSigma,Blurred, cv::Size(blur_diam,blur_diam));
-        
-        if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_2_PreOtsu.png", Blurred);
-        
-        cv::threshold(Blurred, Blurred, this->loc_thres, 255, cv::THRESH_TOZERO);
-        
-        if (!this->nonStopMode) std::cout << "cv::countNonZero(Blurred): " << cv::countNonZero(Blurred) << std::endl;
-        if (cv::countNonZero(Blurred) > 0) break;
-    }
-    */
-    //cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));
+    //cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));    //Now done in ProcessFrame
     cv::threshold(overTheSigma, overTheSigma, this->loc_thres, 255, cv::THRESH_TOZERO);
     if (!this->nonStopMode) std::cout << "this->loc_thres: " << this->loc_thres << std::endl;
     cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
@@ -371,8 +337,9 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     //overTheSigma.refcount=0;
     NewFrameDiffTrig.release();
     overTheSigma.release();
+    TempFrameDiffTrig.release();
+    TempFrameDiffPreTrig.release();
     //debugShow(this->presentationFrame);
-    //if (!this->nonStopMode) exit(0);
 }
 
 
