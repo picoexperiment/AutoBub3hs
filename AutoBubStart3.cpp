@@ -105,7 +105,7 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
             {
                 Pico60Writer->stageCameraOutputError(camera,AnalyzerCGeneric->TriggerFrameIdentificationStatus, actualEventNumber);
                 break;
-            }break;
+            }   //std::cout << "BREAKING!!! THIS IS FOR DEBUGGING AND SHOULD NOT BE ACTIVATED!!!" << std::endl; break;
         } while (AnalyzerCGeneric->BubbleList.size()==0);
 
     /*The exception block for camera specific crashes. outputs -6 for the error*/

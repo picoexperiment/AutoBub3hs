@@ -28,8 +28,7 @@ class AnalyzerUnit{
         int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
         float calculateEntropyFrame(cv::Mat& , bool debug = false);
-        double calculateSignificanceFrame(cv::Mat& DiffFrame, cv::Mat& TrainedSigma, bool debug = false);
-        double checkTriggerDerivative(cv::Mat& ImageFrame, cv::Mat& LastFrame, bool store, bool debug = false);
+        double calculateSignificanceFrame(cv::Mat& ImageFrame, bool store, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -64,7 +63,6 @@ class AnalyzerUnit{
         /*Threshold for localizer*/
         int loc_thres;
         
-        std::vector< std::vector<double> > ratios;
         std::vector< std::vector<int> > pix_counts;
 
         /*Find the trigger frame function*/
