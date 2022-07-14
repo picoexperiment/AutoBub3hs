@@ -717,7 +717,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     /*Assign the three useful frames*/
 //    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
-    int prev_offset = 2;
+    int prev_offset = 1;
     //Slight pressure changes over the course of the run change the local density of the freon, which results in some intensity fluctuations near the bellows.
     //This can trigger the algorithm at the beginning of the event, so we sacrifice some sensitivity at the beginning of the event to compensate for a lack of sigma frame.
     //It's possible to have a trigger in the first frames as well, and there's no easy way to tell the difference other than to reduce the frame difference.

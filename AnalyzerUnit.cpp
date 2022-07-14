@@ -169,7 +169,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
     
-    bool twoFrameOffset = true;
+    bool twoFrameOffset = false;//true;
     //Lose some sensitivity to slow bubbles if training sample size is too small.
     //Needed to deal with non-stochastic noise introduced by changes in local freon density.
     if (this->TrainedData->TrainingSetSize < 4) twoFrameOffset = false;
@@ -417,6 +417,7 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store,
                 
                 if (store){
                     this->loc_thres = std::max(first_over_3p5-1,max_adc-1);
+                    if (this->loc_thres < 2) this->loc_thres = 2;
                     if (this->loc_thres > loc_thres_max) this->loc_thres = loc_thres_max;
                 }
                     
