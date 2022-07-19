@@ -51,7 +51,7 @@ class L3Localizer: public AnalyzerUnit{
 
         cv::Mat PostTrigWorkingFrame;
 
-
+        int blur_diam;
 
         /*Test functions and pass criteria*/
         void EllipseTest(cv::Mat&, cv::RotatedRect&, cv::Rect&, cv::Scalar&, std::vector<cv::RotatedRect>&,  int, bool drawEllipses=true);
@@ -71,6 +71,8 @@ class L3Localizer: public AnalyzerUnit{
         /*Public functions exposing the interface*/
         //void LocalizeBottomBubble(cv::Mat&, cv::Mat&, std::vector<cv::RotatedRect>& );
         void CalculateInitialBubbleParams(void );
+        cv::Rect GetDiffROI(cv::Point2f point1, cv::Point2f point2, cv::Mat& frame);
+        void TrackAFeature(cv::Mat& frame, cv::Mat TemplateImage, cv::Point2f& BestMatchLoc); //Adapted from PICOJarTracker
         void CalculateInitialBubbleParamsCam2(void );
         void CalculatePostTriggerFrameParams(int );
         void CalculatePostTriggerFrameParamsCam2(int );
@@ -81,7 +83,7 @@ class L3Localizer: public AnalyzerUnit{
         bool Level1SuspicionFlag;
 
         void LocalizeOMatic(std::string);
-        bool isInMask(cv::Rect*);
+        bool isInMask(cv::Rect*, bool bellows = false);
 
 
 };

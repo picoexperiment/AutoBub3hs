@@ -169,7 +169,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
     
-    bool twoFrameOffset = false;//true;
+    bool twoFrameOffset = true;
     //Lose some sensitivity to slow bubbles if training sample size is too small.
     //Needed to deal with non-stochastic noise introduced by changes in local freon density.
     if (this->TrainedData->TrainingSetSize < 4) twoFrameOffset = false;
@@ -194,10 +194,8 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
 
         /*Background Subtract*/
-        if (!nonStopMode) std::cout << "Starting frame processing..." << std::endl;
         ProcessFrame(workingFrame,twoFrameOffset?prevPrevFrame:prevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
         //Future task: Could do a comparison with both prev and prevPrev to get even better sensitivity!
-        if (!nonStopMode) std::cout << "Frame processed. Now doing significance calculation" << std::endl;
         
         /*Find LBP and then calculate Entropy*/
         //subtr_frame = lbpImage(diff_frame);
@@ -293,10 +291,17 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
 }
 
 void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam, int img_num){
-    cv::Mat pos_diff, neg_diff, blur_sigma;
+    cv::Rect ROI(0,0,workingFrame.cols,workingFrame.rows);
+    ProcessFrame(workingFrame,prevFrame,diff_frame,blur_diam,ROI,img_num);
+}
 
-    pos_diff = workingFrame - prevFrame - 6*this->TrainedData->TrainedSigmaImage;    //Note that negative numbers saturate to 0
-    neg_diff = prevFrame - workingFrame - 6*this->TrainedData->TrainedSigmaImage;
+void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam, cv::Rect ROI, int img_num){
+    cv::Mat pos_diff, neg_diff, blur_sigma;
+    
+    diff_frame = cv::Mat::zeros(workingFrame.rows, workingFrame.cols, workingFrame.type());
+
+    pos_diff = workingFrame(ROI) - prevFrame(ROI) - 6*this->TrainedData->TrainedSigmaImage(ROI);    //Note that negative numbers saturate to 0
+    neg_diff = prevFrame(ROI) - workingFrame(ROI) - 6*this->TrainedData->TrainedSigmaImage(ROI);
     if (img_num >= 0){
         imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_"+this->CameraFrames[img_num], pos_diff);
         imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_"+this->CameraFrames[img_num], neg_diff);
@@ -310,7 +315,7 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
     pos_diff -= blur_sigma;
     neg_diff -= blur_sigma;
     */
-    cv::absdiff(pos_diff, neg_diff, diff_frame);
+    cv::absdiff(pos_diff, neg_diff, diff_frame(ROI));
 
 /*
     cv::absdiff(workingFrame, prevFrame, diff_frame);

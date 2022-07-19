@@ -216,15 +216,17 @@ void L3Localizer::rem_unique(std::vector<cv::Rect>& L2SearchAreas, std::vector<c
 void L3Localizer::CalculateInitialBubbleParams(void )
 {
 
-    if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << "-----" << std::endl;
+    if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+30 << "-----" << std::endl;
+
+    int blur_diam = 5;
 
     /*Construct the frame differences and LBPImage Frames*/
-    cv::Mat overTheSigma;
+    cv::Mat overTheSigma, thresFrame;
     //cv::Mat NewFrameDiffTrig, TempFrameDiffTrig, TempFrameDiffPreTrig; //Not used; replaced by ProcessFrame
     //cv::absdiff(this->triggerFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffTrig);
     //cv::absdiff(this->preTrigFrame, this->TrainedData->TrainedAvgImage, TempFrameDiffPreTrig);
     //cv::absdiff(TempFrameDiffTrig, TempFrameDiffPreTrig, NewFrameDiffTrig);
-    ProcessFrame(this->triggerFrame, this->preTrigFrame, overTheSigma,5);
+    ProcessFrame(this->triggerFrame, this->preTrigFrame, overTheSigma,blur_diam);
 
     /*Debug*/
     // DebugPeek must be created by user for these to be saved
@@ -244,20 +246,22 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_02_OvrThe6Sigma.png", overTheSigma);
 
     //cv::blur(overTheSigma,overTheSigma, cv::Size(3,3));    //Now done in ProcessFrame
-    cv::threshold(overTheSigma, overTheSigma, this->loc_thres, 255, cv::THRESH_TOZERO);
+    cv::threshold(overTheSigma, thresFrame, this->loc_thres, 255, cv::THRESH_TOZERO);
     if (!this->nonStopMode) std::cout << "this->loc_thres: " << this->loc_thres << std::endl;
-    cv::threshold(overTheSigma, overTheSigma, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
+    cv::threshold(thresFrame, thresFrame, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
 
     /*Debug*/
-    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_3_OtsuThresholded.png", overTheSigma);
+    if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_3_OtsuThresholded.png", thresFrame);
 
 
 
 
     /*Use contour / canny edge detection to find contours of interesting objects*/
     std::vector<std::vector<cv::Point> > contours;
-    cv::findContours(overTheSigma, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
+    cv::findContours(thresFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
     if (!this->nonStopMode) std::cout << contours.size() << std::endl;
+    
+    
 
     /*Make two vectors to store the fitted rectanglse and ellipses*/
     //std::vector<cv::RotatedRect> minAreaRect( contours.size() );
@@ -265,15 +269,112 @@ void L3Localizer::CalculateInitialBubbleParams(void )
 
     int BoxArea=0;
     int largestBoxArea = 0;
+    bool allInBellowsMask = contours.size()>0 ? true : false;
     /*Generate the ellipses and rectangles for each contours*/
     for( int i = 0; i < contours.size(); i++ ) {
-        if (!this->nonStopMode) std::cout << "contours[" << i << "]..." << std::endl;
-        for (int jj = 0; !this->nonStopMode && jj < contours[i].size(); jj++) std::cout << contours[i][jj].x << "," << contours[i][jj].y << std::endl;
         minRect[i] = cv::boundingRect( contours[i]);
         //minAreaRect[i] = cv::minAreaRect(contours[i] );
         BoxArea = minRect[i].width*minRect[i].height;
-        if (largestBoxArea < BoxArea) largestBoxArea = BoxArea;
+        if (!this->isInMask(&minRect[i],true)){  //If not in bellows region
+            allInBellowsMask = false;
+            if (largestBoxArea < BoxArea) largestBoxArea = BoxArea;
+        }
+        else{
+            if (!nonStopMode) std::cout << "Found bubble in bellows mask." << std::endl;
+            contours.erase(contours.begin()+i);
+            i--;
+        }
     }
+    
+    if (allInBellowsMask){  //Subtract bellows movement and see if contours remain
+    
+        std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_bellows_template.png";
+        cv::Mat TemplateImage = cv::imread(path , cv::IMREAD_GRAYSCALE);
+        if (!nonStopMode) cv::imwrite("DebugPeek/cam" + std::to_string(CameraNumber)+"_bellows_template.png", TemplateImage);
+        if (TemplateImage.empty()){
+            std::cout << "Template image not loadable for event " << this->EventID
+                << " camera " << this->CameraNumber << "; cannot veto bellows movement triggers" << std::endl;
+            std::cout << "Template path: " << path << std::endl;
+        }
+        
+        else{
+            if (!nonStopMode) std::cout << "Making empty frames" << std::endl;
+            cv::Mat trig_copy = cv::Mat::zeros(this->triggerFrame.rows, this->triggerFrame.cols, this->triggerFrame.type());
+            cv::Mat trig_copy_extra = cv::Mat::zeros(this->triggerFrame.rows, this->triggerFrame.cols, this->triggerFrame.type());
+            cv::Mat preTrig_copy = cv::Mat::zeros(this->preTrigFrame.rows, this->preTrigFrame.cols, this->preTrigFrame.type());
+            
+            if (!nonStopMode) std::cout << "Matching bellows templates" << std::endl;
+            cv::Point2f template_pos_trig;
+            cv::Point2f template_pos_trig_extra;
+            cv::Point2f template_pos_pretrig;
+            TrackAFeature(this->triggerFrame,TemplateImage,template_pos_trig);
+            TrackAFeature(this->preTrigFrame,TemplateImage,template_pos_pretrig);
+            
+            if (!nonStopMode) std::cout << "Copying templates to empty frames" << std::endl;
+            template_pos_trig_extra = template_pos_trig;
+            if (int(template_pos_trig.x) == int(template_pos_pretrig.x) && int(template_pos_trig.y) == int(template_pos_pretrig.y)){
+                if (!nonStopMode) std::cout << "No motion seen" << std::endl;
+                template_pos_trig.x -= 1;
+                template_pos_trig_extra.x += 1;
+            }
+            else{
+                template_pos_trig_extra.x += ceil(template_pos_trig.x - template_pos_pretrig.x);
+                template_pos_trig_extra.y += ceil(template_pos_trig.y - template_pos_pretrig.y);
+                if (!nonStopMode) std::cout << "Motion seen: delta X: " << template_pos_trig.x-template_pos_pretrig.x << ", delta Y: " << template_pos_trig.y-template_pos_pretrig.y << std::endl;
+            }
+            if (!this->nonStopMode){
+                std::cout << "template_pos_trig.x: " << template_pos_trig.x << "; template_pos_trig.y: " << template_pos_trig.y << std::endl;
+                std::cout << "template_pos_pretrig.x: " << template_pos_pretrig.x << "; template_pos_pretrig.y: " << template_pos_pretrig.y << std::endl;
+                std::cout << "template_pos_trig_extra.x: " << template_pos_trig_extra.x << "; template_pos_trig_extra.y: " << template_pos_trig_extra.y << std::endl;
+            }
+            
+            TemplateImage.copyTo(trig_copy(cv::Rect(template_pos_trig.x,template_pos_trig.y,TemplateImage.cols, TemplateImage.rows)));
+            TemplateImage.copyTo(trig_copy_extra(cv::Rect(template_pos_trig_extra.x,template_pos_trig_extra.y,TemplateImage.cols, TemplateImage.rows)));
+            TemplateImage.copyTo(preTrig_copy(cv::Rect(template_pos_pretrig.x,template_pos_pretrig.y,TemplateImage.cols, TemplateImage.rows)));
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsTrig.png", trig_copy);
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsTrigExtra.png", trig_copy_extra);
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsPreTrig.png", preTrig_copy);
+            
+            if (!nonStopMode) std::cout << "Processing new frames" << std::endl;
+            cv::Mat diff_frame, diff_frame_extra;
+            cv::Rect diffROI = GetDiffROI(template_pos_trig,template_pos_pretrig,TemplateImage);
+            ProcessFrame(trig_copy,preTrig_copy,diff_frame,blur_diam,diffROI);
+            diffROI = GetDiffROI(template_pos_trig_extra,template_pos_pretrig,TemplateImage);
+            ProcessFrame(trig_copy_extra,preTrig_copy,diff_frame_extra,blur_diam,diffROI);
+            diff_frame += diff_frame_extra;
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_002_BellowsDiff.png", diff_frame);
+            
+            if (!nonStopMode) std::cout << "Taking diff" << std::endl;
+            overTheSigma -= diff_frame;
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_02_OvrThe6Sigma.png", overTheSigma);
+            
+            cv::threshold(overTheSigma, thresFrame, this->loc_thres, 255, cv::THRESH_TOZERO);
+            if (!this->nonStopMode) std::cout << "this->loc_thres: " << this->loc_thres << std::endl;
+            cv::threshold(thresFrame, thresFrame, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
+            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_3_OtsuThresholded.png", thresFrame);
+        }
+        
+        if (!nonStopMode) std::cout << "Getting new contours" << std::endl;
+        /*Use contour / canny edge detection to find contours of interesting objects*/
+        contours.clear();
+        cv::findContours(thresFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1); 
+        if (!this->nonStopMode) std::cout << contours.size() << std::endl;
+        
+        minRect.clear();
+        minRect.resize( contours.size() );
+
+        BoxArea=0;
+        largestBoxArea = 0;
+        /*Generate the ellipses and rectangles for each contours*/
+        for( int i = 0; i < contours.size(); i++ ) {
+            minRect[i] = cv::boundingRect( contours[i]);
+            //minAreaRect[i] = cv::minAreaRect(contours[i] );
+            BoxArea = minRect[i].width*minRect[i].height;
+            if (!this->nonStopMode) std::cout << "Contour " << i << " box area: " << BoxArea << std::endl;
+            if (largestBoxArea < BoxArea) largestBoxArea = BoxArea;
+        }
+    }
+    
     for( int i = 0; i < contours.size(); i++ ) {
         BoxArea = minRect[i].width*minRect[i].height;
     
@@ -331,16 +432,101 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     /*Debug*/
     if (!this->nonStopMode){
       cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
-      std::cout << "-----End ev " << this->EventID << ", cam " << CameraNumber << "-----" << std::endl;
+      std::cout << "-----End ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+30 << "-----" << std::endl;
     }
 
     //NewFrameDiffTrig.refcount=0;
     //overTheSigma.refcount=0;
     //NewFrameDiffTrig.release();
     overTheSigma.release();
+    thresFrame.release();
     //TempFrameDiffTrig.release();
     //TempFrameDiffPreTrig.release();
     //debugShow(this->presentationFrame);
+}
+
+cv::Rect L3Localizer::GetDiffROI(cv::Point2f point1, cv::Point2f point2, cv::Mat& frame){
+    int start_x, start_y, delta_x, delta_y;
+    start_x = std::max(point1.x,point2.x);
+    start_y = std::max(point1.y,point2.y);
+    delta_x = std::min(point1.x,point2.x) + frame.cols - start_x;
+    delta_y = std::min(point1.y,point2.y) + frame.rows - start_y;
+    if (!this->nonStopMode) std::cout << "ROI: X1=" << start_x << "; X2=" << start_x+delta_x << "; Y1=" << start_y << "; Y2=" << start_y+delta_y << std::endl;
+    return cv::Rect(start_x,start_y,delta_x,delta_y);
+}
+
+
+void L3Localizer::TrackAFeature(cv::Mat& frame, cv::Mat TemplateImage, cv::Point2f& BestMatchLoc){
+
+    cv::Mat result;
+
+    /*Restrict the ROT of the analysisFrame*/
+    //TODO: Remove hard-coding after testing the speed of this process and expanding ROI (potentially up to full image or some distance from 255 bin in bellows mask)
+    cv::Rect TemplateSearchZone;
+    if (CameraNumber == 3)
+        TemplateSearchZone = cv::Rect(1324-50, 344-10, TemplateImage.cols+100, TemplateImage.rows+20);
+    if (CameraNumber == 1)
+        TemplateSearchZone = cv::Rect(1367-50, 253-10, TemplateImage.cols+100, TemplateImage.rows+20);
+    if (!nonStopMode) std::cout << "Making ROI" << std::endl;
+    cv::Mat _AnaFrameSmallROI = cv::Mat(frame, TemplateSearchZone);
+
+
+
+    // Create the result matrix
+    if (!nonStopMode) std::cout << "Create the result matrix" << std::endl;
+    int result_cols =  _AnaFrameSmallROI.cols - TemplateImage.cols + 1;
+    int result_rows = _AnaFrameSmallROI.rows - TemplateImage.rows + 1;
+    result.create( result_rows, result_cols, CV_32F );
+
+
+    // Do the Matching and Normalize
+    if (!nonStopMode) std::cout << "Do the Matching and Normalize" << std::endl;
+    int match_method=CV_TM_CCORR_NORMED;
+    cv::matchTemplate( _AnaFrameSmallROI, TemplateImage, result, match_method );
+    cv::normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
+
+
+
+    // Localizing the best match with minMaxLoc
+    if (!nonStopMode) std::cout << "Localizing the best match with minMaxLoc" << std::endl;
+    double minVal; double maxVal; cv::Point minLoc; cv::Point maxLoc;
+    cv::Point matchLoc;
+    cv::minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, cv::Mat() );
+
+    // For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
+    if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
+        { matchLoc = minLoc; }
+    else
+        { matchLoc = maxLoc; }
+
+    /*Append result to return var*/
+
+    cv::Point2f BestMatchSubPixel;
+    BestMatchSubPixel = cv::Point2f(0.0,0.0);
+
+    float total_mass=0.0;
+    float inv_mass=0.0;
+    float pixel_value=0.0;
+    
+    int SubPixelAveragingGrid = 1;
+
+    for (int i=-SubPixelAveragingGrid; i<=SubPixelAveragingGrid; i++){
+        for (int j=-SubPixelAveragingGrid; j<=SubPixelAveragingGrid; j++){
+            pixel_value = result.at<float>(matchLoc.y+j, matchLoc.x+i);
+            BestMatchSubPixel+=cv::Point2f(matchLoc.x+i,matchLoc.y+j)*pixel_value;
+            total_mass +=pixel_value;
+        }
+    }
+
+    inv_mass = 1.0/total_mass;
+    BestMatchSubPixel *= inv_mass;
+
+
+
+    /*Offset correction*/
+    BestMatchLoc = cv::Point2f(BestMatchSubPixel.x+TemplateSearchZone.x, BestMatchSubPixel.y+TemplateSearchZone.y);
+    //std::cout<<BestMatchLoc<<"\n";
+    result.release();
 }
 
 
@@ -717,7 +903,7 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
     /*Assign the three useful frames*/
 //    if (this->CameraNumber==2) this->MatTrigFrame+=1;
 
-    int prev_offset = 1;
+    int prev_offset = 2;
     //Slight pressure changes over the course of the run change the local density of the freon, which results in some intensity fluctuations near the bellows.
     //This can trigger the algorithm at the beginning of the event, so we sacrifice some sensitivity at the beginning of the event to compensate for a lack of sigma frame.
     //It's possible to have a trigger in the first frames as well, and there's no easy way to tell the difference other than to reduce the frame difference.
@@ -764,18 +950,21 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 }
 
 //filtering out genesis locations that occur out of acceptable area according to masks in external folder.
-bool L3Localizer::isInMask( cv::Rect *genesis_coords )
+bool L3Localizer::isInMask( cv::Rect *genesis_coords, bool bellows )
 {
 
     int xpix = genesis_coords->x+genesis_coords->width/2.;
     int ypix = genesis_coords->y+genesis_coords->height/2;
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
-    std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber) + "_mask.bmp";
+    std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber);
+    if (bellows) path += "_bellows";
+    path += "_mask.bmp";
     cv::Mat mask_image = cv::imread(path , cv::IMREAD_GRAYSCALE);
     if (mask_image.empty()){
         std::cout << "Mask image not loadable for event " << this->EventID
             << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
-        return true;
+        if (!bellows) return true;
+        else return false;
     }
 //    cv::Mat mask_image = cv::imread("./cam_masks/cam" + std::to_string(this->CameraNumber) + "_mask.bmp" , cv::IMREAD_GRAYSCALE);
 
@@ -789,7 +978,7 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords )
 
     } else {
 
-        if (!this->nonStopMode) std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
+        if (!this->nonStopMode && !bellows) std::cout << "\nCaught a bubble at: (" << xpix << "," <<  ypix << ") cam " << this->CameraNumber <<", event " << this-> EventID << ") with pixel value: " << (int)mask_image.at<uchar>(ypix,xpix) << " (out of image mask bounds)\n";
         return false; //It lies outside of the acceptable range
     }
 

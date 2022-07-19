@@ -55,6 +55,7 @@ class AnalyzerUnit{
         
         /*Perform subtraction and blurring on image before checking for trigger*/
         void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam, cv::Rect ROI, int img_num  = -1);
 
         /*Variable holding the RotatedRect bubble array and the trigger frame*/
         std::vector<cv::RotatedRect> BubblePixelPos;
