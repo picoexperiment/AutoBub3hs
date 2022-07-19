@@ -222,6 +222,7 @@ int main(int argc, char** argv)
             frameOffset = 30;
             if (run_number >= "20200713_7"){ numCams = 4; }
             else { numCams = 2; }
+            if (run_number < "20200501_1") frameOffset = 20;
     }
     else {
             imageFormat = "cam%d_image%u.png";
@@ -259,7 +260,7 @@ int main(int argc, char** argv)
     }
     catch (...)
     {
-        std::cout<<"Failed to read the images from the run. Autobub cannot continue.\n";
+        std::cout<<"Failed to read the images from run " << run_number << ". Autobub cannot continue.\n";
         for (int icam = 0; icam < numCams; icam++){ PICO60Output->stageCameraOutputError(icam, -5, -1); }
         PICO60Output->writeCameraOutput();
         return -5;
@@ -298,7 +299,7 @@ int main(int argc, char** argv)
     }
 
     if (!succeeded){
-        std::cout<<"Failed to train on images from the run. Autobub cannot continue.\n";
+        std::cout<<"Failed to train on images from run " << run_number << ". Autobub cannot continue.\n";
         for (int evi=0; evi<EventList.size(); evi++){
             int actualEventNumber = atoi(EventList[evi].c_str());
             for (int icam = 0; icam < numCams; icam++){

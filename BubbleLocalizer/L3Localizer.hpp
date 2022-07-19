@@ -50,6 +50,8 @@ class L3Localizer: public AnalyzerUnit{
 
 
         cv::Mat PostTrigWorkingFrame;
+        
+        cv::Mat cam_mask, bellows_mask;
 
         int blur_diam;
 

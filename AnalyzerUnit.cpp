@@ -172,7 +172,10 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     bool twoFrameOffset = true;
     //Lose some sensitivity to slow bubbles if training sample size is too small.
     //Needed to deal with non-stochastic noise introduced by changes in local freon density.
-    if (this->TrainedData->TrainingSetSize < 4) twoFrameOffset = false;
+    if (this->TrainedData->TrainingSetSize < 6){
+        twoFrameOffset = false;
+        entropyThreshold = 5;
+    }
     if (!nonStopMode) std::cout << "twoFrameOffset: " << twoFrameOffset << "; this->TrainedData->TrainingSetSize: " << this->TrainedData->TrainingSetSize << std::endl;
 
     for (int i = startframe; i < this->CameraFrames.size(); i++) {
@@ -423,10 +426,14 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store,
                 if (store){
                     this->loc_thres = std::max(first_over_3p5-1,max_adc-1);
                     if (this->loc_thres < 2) this->loc_thres = 2;
-                    if (this->loc_thres > loc_thres_max) this->loc_thres = loc_thres_max;
+                    if (this->loc_thres > loc_thres_max || this->TrainedData->TrainingSetSize < 6) this->loc_thres = loc_thres_max;
                 }
                     
                 pix_rem -= binEntry;
+            }
+            else{
+                if (debug && i==2) std::cout << std::endl;
+                break;
             }
     }
     
