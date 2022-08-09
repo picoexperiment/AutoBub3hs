@@ -198,6 +198,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
 
         /*Background Subtract*/
         ProcessFrame(workingFrame,twoFrameOffset?prevPrevFrame:prevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
+        //ProcessFrame(workingFrame,prevFrame,subtr_frame,5,nonStopMode ? -1 : i);   //old way
         //Future task: Could do a comparison with both prev and prevPrev to get even better sensitivity!
         
         /*Find LBP and then calculate Entropy*/
@@ -314,16 +315,21 @@ void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::M
     cv::GaussianBlur(pos_diff, pos_diff, cv::Size(blur_diam, blur_diam), 0);
     cv::GaussianBlur(neg_diff, neg_diff, cv::Size(blur_diam, blur_diam), 0);
     //cv::GaussianBlur(this->TrainedData->TrainedSigmaImage, blur_sigma, cv::Size(blur_diam, blur_diam), 0);
+    if (img_num >= 0){
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_pos_filter_"+this->CameraFrames[img_num], pos_diff);
+        imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_neg_filter_"+this->CameraFrames[img_num], neg_diff);
+    }
     /*
     pos_diff -= blur_sigma;
     neg_diff -= blur_sigma;
     */
     cv::absdiff(pos_diff, neg_diff, diff_frame(ROI));
 
-/*
-    cv::absdiff(workingFrame, prevFrame, diff_frame);
-    cv::GaussianBlur(diff_frame, diff_frame, cv::Size(5, 5), 0);
-*/
+    /*
+    cv::absdiff(workingFrame, prevFrame, diff_frame);  //Old method (just this line)
+    diff_frame = diff_frame - 6*this->TrainedData->TrainedSigmaImage;*/
+    //cv::GaussianBlur(diff_frame, diff_frame, cv::Size(5, 5), 0);
+
 }
 
 /*This function calculates ImageEntropy

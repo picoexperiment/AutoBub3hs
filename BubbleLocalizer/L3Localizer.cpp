@@ -299,17 +299,27 @@ void L3Localizer::CalculateInitialBubbleParams(void )
         else{
             if (!nonStopMode) std::cout << "Making empty frames" << std::endl;
             cv::Mat trig_copy = cv::Mat::zeros(this->triggerFrame.rows, this->triggerFrame.cols, this->triggerFrame.type());
-            cv::Mat trig_copy_extra = cv::Mat::zeros(this->triggerFrame.rows, this->triggerFrame.cols, this->triggerFrame.type());
+            //cv::Mat trig_copy_extra = cv::Mat::zeros(this->triggerFrame.rows, this->triggerFrame.cols, this->triggerFrame.type());
             cv::Mat preTrig_copy = cv::Mat::zeros(this->preTrigFrame.rows, this->preTrigFrame.cols, this->preTrigFrame.type());
             
             if (!nonStopMode) std::cout << "Matching bellows templates" << std::endl;
             cv::Point2f template_pos_trig;
-            cv::Point2f template_pos_trig_extra;
+            //cv::Point2f template_pos_trig_extra;
             cv::Point2f template_pos_pretrig;
             TrackAFeature(this->triggerFrame,TemplateImage,template_pos_trig);
             TrackAFeature(this->preTrigFrame,TemplateImage,template_pos_pretrig);
             
             if (!nonStopMode) std::cout << "Copying templates to empty frames" << std::endl;
+            
+            if (template_pos_trig.x >= template_pos_pretrig.x){
+                template_pos_trig.x++;
+                template_pos_pretrig.x--;
+            }
+            else{
+                template_pos_trig.x--;
+                template_pos_pretrig.x++;
+            }
+            /*
             template_pos_trig_extra = template_pos_trig;
             if (int(template_pos_trig.x) == int(template_pos_pretrig.x) && int(template_pos_trig.y) == int(template_pos_pretrig.y)){
                 if (!nonStopMode) std::cout << "No motion seen" << std::endl;
@@ -321,26 +331,27 @@ void L3Localizer::CalculateInitialBubbleParams(void )
                 template_pos_trig_extra.y += ceil(template_pos_trig.y - template_pos_pretrig.y);
                 if (!nonStopMode) std::cout << "Motion seen: delta X: " << template_pos_trig.x-template_pos_pretrig.x << ", delta Y: " << template_pos_trig.y-template_pos_pretrig.y << std::endl;
             }
+            */
             if (!this->nonStopMode){
                 std::cout << "template_pos_trig.x: " << template_pos_trig.x << "; template_pos_trig.y: " << template_pos_trig.y << std::endl;
                 std::cout << "template_pos_pretrig.x: " << template_pos_pretrig.x << "; template_pos_pretrig.y: " << template_pos_pretrig.y << std::endl;
-                std::cout << "template_pos_trig_extra.x: " << template_pos_trig_extra.x << "; template_pos_trig_extra.y: " << template_pos_trig_extra.y << std::endl;
+                //std::cout << "template_pos_trig_extra.x: " << template_pos_trig_extra.x << "; template_pos_trig_extra.y: " << template_pos_trig_extra.y << std::endl;
             }
             
             TemplateImage.copyTo(trig_copy(cv::Rect(template_pos_trig.x,template_pos_trig.y,TemplateImage.cols, TemplateImage.rows)));
-            TemplateImage.copyTo(trig_copy_extra(cv::Rect(template_pos_trig_extra.x,template_pos_trig_extra.y,TemplateImage.cols, TemplateImage.rows)));
+            //TemplateImage.copyTo(trig_copy_extra(cv::Rect(template_pos_trig_extra.x,template_pos_trig_extra.y,TemplateImage.cols, TemplateImage.rows)));
             TemplateImage.copyTo(preTrig_copy(cv::Rect(template_pos_pretrig.x,template_pos_pretrig.y,TemplateImage.cols, TemplateImage.rows)));
             if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsTrig.png", trig_copy);
-            if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsTrigExtra.png", trig_copy_extra);
+            //if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsTrigExtra.png", trig_copy_extra);
             if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_1_BellowsPreTrig.png", preTrig_copy);
             
             if (!nonStopMode) std::cout << "Processing new frames" << std::endl;
             cv::Mat diff_frame, diff_frame_extra;
             cv::Rect diffROI = GetDiffROI(template_pos_trig,template_pos_pretrig,TemplateImage);
             ProcessFrame(trig_copy,preTrig_copy,diff_frame,blur_diam,diffROI);
-            diffROI = GetDiffROI(template_pos_trig_extra,template_pos_pretrig,TemplateImage);
-            ProcessFrame(trig_copy_extra,preTrig_copy,diff_frame_extra,blur_diam,diffROI);
-            diff_frame += diff_frame_extra;
+            //diffROI = GetDiffROI(template_pos_trig_extra,template_pos_pretrig,TemplateImage);
+            //ProcessFrame(trig_copy_extra,preTrig_copy,diff_frame_extra,blur_diam,diffROI);
+            //diff_frame += diff_frame_extra;
             if (!this->nonStopMode) cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_002_BellowsDiff.png", diff_frame);
             
             if (!nonStopMode) std::cout << "Taking diff" << std::endl;
@@ -462,11 +473,12 @@ void L3Localizer::TrackAFeature(cv::Mat& frame, cv::Mat TemplateImage, cv::Point
     /*Restrict the ROT of the analysisFrame*/
     //TODO: Remove hard-coding after testing the speed of this process and expanding ROI (potentially up to full image or some distance from 255 bin in bellows mask)
     cv::Rect TemplateSearchZone;
-    if (CameraNumber == 3)
+    /*if (CameraNumber == 3)
         TemplateSearchZone = cv::Rect(1324-50, 344-10, TemplateImage.cols+100, TemplateImage.rows+20);
     if (CameraNumber == 1)
         TemplateSearchZone = cv::Rect(1367-50, 253-10, TemplateImage.cols+100, TemplateImage.rows+20);
-    if (!nonStopMode) std::cout << "Making ROI" << std::endl;
+    if (!nonStopMode) std::cout << "Making ROI" << std::endl;*/
+    TemplateSearchZone = cv::Rect(0, 0, frame.cols, frame.rows);    //No ROI; searches full image
     cv::Mat _AnaFrameSmallROI = cv::Mat(frame, TemplateSearchZone);
 
 
@@ -483,8 +495,6 @@ void L3Localizer::TrackAFeature(cv::Mat& frame, cv::Mat TemplateImage, cv::Point
     int match_method=CV_TM_CCORR_NORMED;
     cv::matchTemplate( _AnaFrameSmallROI, TemplateImage, result, match_method );
     cv::normalize( result, result, 0, 1, cv::NORM_MINMAX, -1, cv::Mat() );
-
-
 
     // Localizing the best match with minMaxLoc
     if (!nonStopMode) std::cout << "Localizing the best match with minMaxLoc" << std::endl;
@@ -524,7 +534,7 @@ void L3Localizer::TrackAFeature(cv::Mat& frame, cv::Mat TemplateImage, cv::Point
 
     /*Offset correction*/
     BestMatchLoc = cv::Point2f(BestMatchSubPixel.x+TemplateSearchZone.x, BestMatchSubPixel.y+TemplateSearchZone.y);
-    //std::cout<<BestMatchLoc<<"\n";
+    if (!nonStopMode) std::cout<<BestMatchLoc<<"\n";
     result.release();
 }
 
