@@ -23,12 +23,13 @@ class AnalyzerUnit{
 
 
         /*Training frames and detection frames*/
-        int minEvalFrameNumber = 0;     //CR: Not sure why we need this, so changing from 2 to 0
+        int minEvalFrameNumber = 2;     //This skips the images used for training
         int firstTrainingFrames = 1;    //CR: This doesn't seem to do anything anymore
         int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
         float calculateEntropyFrame(cv::Mat& , bool debug = false);
         double calculateSignificanceFrame(cv::Mat& ImageFrame, bool store, bool debug = false);
+        double calculateEntropySignificance(cv::Mat& ImageFrame, bool store, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -65,6 +66,7 @@ class AnalyzerUnit{
         int loc_thres;
         
         std::vector< std::vector<int> > pix_counts;
+        std::vector<double> entropies;
 
         /*Find the trigger frame function*/
         void FindTriggerFrame(bool nonStopMode, int startframe);

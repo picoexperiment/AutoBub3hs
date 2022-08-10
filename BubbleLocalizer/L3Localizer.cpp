@@ -923,7 +923,12 @@ void L3Localizer::LocalizeOMatic(std::string imageStorePath)
 
     //this->triggerFrame = cv::imread(this->ImageDir + this->CameraFrames[this->MatTrigFrame],0);
     this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame], this->triggerFrame);
-    this->FileParser->GetImage(this->EventID, this->CameraFrames[this->MatTrigFrame-prev_offset], this->preTrigFrame);    //Use the frame two frames back in case bubble actually started emerging in trig-1
+    
+    //Use the frame two frames back in case bubble actually started emerging in trig-1
+    int preTrigNum = this->MatTrigFrame-prev_offset;
+    if (preTrigNum < 0) preTrigNum = 0;
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[preTrigNum], this->preTrigFrame);
+    
     this->presentationFrame = triggerFrame.clone();
     //cv::cvtColor(this->presentationFrame, this->presentationFrame, cv::COLOR_GRAY2BGR);
     //this->ComparisonFrame = cv::imread(this->ImageDir + this->CameraFrames[0],0);

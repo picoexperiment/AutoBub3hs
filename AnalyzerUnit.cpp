@@ -132,7 +132,11 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     float entropyThreshold;
     //if(this->CameraNumber==2) entropyThreshold = 0.0009;
     //else entropyThreshold = 0.0003;
-    entropyThreshold = 3.5;
+    
+    //PICO-40L thresholds
+    //entropyThreshold = 8e-5;    //For actual entropy. Smallest to prevent noise triggers
+    //entropyThreshold = 1.9; //For entropy significance. Largest to be able to get all the triggers. Get a lot of triggers on noise which get vetoed by frame ahead check
+    entropyThreshold = 3.5; //For new significance. Ideal setting. Will hopefully not require tuning for future fills. Not yet tested on test chambers.
     
 
     /*Variable to store the current entropy in*/
@@ -158,6 +162,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     if (startframe == 1){
         pix_counts.clear();
         pix_counts.resize(256);
+        entropies.clear();
     }
   
     //cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
@@ -174,7 +179,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     //Needed to deal with non-stochastic noise introduced by changes in local freon density.
     if (this->TrainedData->TrainingSetSize < 6){
         twoFrameOffset = false;
-        entropyThreshold = 5;
+        entropyThreshold *= 5/3.5;
     }
     if (!nonStopMode) std::cout << "twoFrameOffset: " << twoFrameOffset << "; this->TrainedData->TrainingSetSize: " << this->TrainedData->TrainingSetSize << std::endl;
 
@@ -204,7 +209,10 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         /*Find LBP and then calculate Entropy*/
         //subtr_frame = lbpImage(diff_frame);
         
-        singleEntropy = this->calculateSignificanceFrame(subtr_frame,true,!nonStopMode);
+        //Choose trigger algorithm (also need to update again below if changing this)
+        //singleEntropy = this->calculateEntropyFrame(subtr_frame,!nonStopMode);                //Actual entropy
+        //singleEntropy = this->calculateEntropySignificance(subtr_frame,true,!nonStopMode);    //Self-tuning entropy significance
+        singleEntropy = this->calculateSignificanceFrame(subtr_frame,true,!nonStopMode);        //Triggers on changes in image histogram. Self-tuning.
 
         /* ****************
          * Debug Point here
@@ -230,7 +238,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         //std::cout<<"Frame Entropy: "<<singleEntropy<<std::endl;
 
         /*Nothing works better than manual entropy settings. :-(*/
-        if (singleEntropy > entropyThreshold and i > this->minEvalFrameNumber) {
+        if (singleEntropy > entropyThreshold and i >= this->minEvalFrameNumber) {
             //std::cout << this->EventID << " " << this->CameraFrames[i] << " " << singleEntropy << std::endl;
             /* LED flicker check: check if the following frame is also
              * above the entropy threshold. Entropy for valid events grows,
@@ -256,6 +264,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                 cv::Mat tempPrevPrevFrame = prevFrame;
                 cv::Mat tempPrevFrame = workingFrame;
                 cv::Mat peakFrame, diff_frame;
+                if (!nonStopMode) std::cout << "Checking whether trigger condition is met in next few frames." << std::endl;
                 for (int ii = 1; ii <= numFramesCheck && ii+i < this->CameraFrames.size(); ii++){   //This means a trigger cannot occur after frame # 70-numFramesCheck
                 
                     this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);
@@ -263,7 +272,12 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     ProcessFrame(peakFrame,twoFrameOffset?tempPrevPrevFrame:tempPrevFrame,diff_frame,5,nonStopMode ? -1 : i+ii);
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
 
+                    //Trigger algorithm
+                    //singleEntropy = this->calculateEntropyFrame(diff_frame,!nonStopMode);
+                    //singleEntropy = this->calculateEntropySignificance(diff_frame,false,!nonStopMode);
                     singleEntropy = this->calculateSignificanceFrame(diff_frame,false,!nonStopMode);
+                    
+                    if (!nonStopMode) std::cout << "Frame ahead " << ii << " entropy: " << singleEntropy << std::endl;
 
                     if (singleEntropy <= entropyThreshold) break;
                     else if (ii == numFramesCheck){
@@ -345,7 +359,7 @@ float AnalyzerUnit::calculateEntropyFrame(cv::Mat& ImageFrame, bool debug){
     cv::Mat image_greyscale, img_histogram;
 
     /*Histogram sizes and bins*/
-    const int histSize[] = {16};
+    const int histSize[] = {128};   //Number of bins. Tuned on PICO-40L first fill. PICO-60 used 16 bins.
     float range[] = { 0, 256 };
     const float* histRange[] = { range };
 
@@ -378,6 +392,16 @@ float AnalyzerUnit::calculateEntropyFrame(cv::Mat& ImageFrame, bool debug){
     return ImgEntropy;
 }
 
+double AnalyzerUnit::calculateEntropySignificance(cv::Mat& ImageFrame, bool store, bool debug){
+    double entropy = calculateEntropyFrame(ImageFrame,debug);
+    if (store){
+        entropies.push_back(entropy);
+    }
+    double mean = CalcMean(entropies);
+    double sigma = CalcStdDev(entropies,mean);
+    return (entropy-mean)/sigma;
+}
+
 double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store, bool debug){
 
     /*Memory for the image greyscale and histogram*/
@@ -403,7 +427,7 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store,
     /*Calculate Significance*/
     int pix_rem = ImageFrame.total();
     double mean, sigma;
-    int first_over_3p5 = loc_thres_max;
+    int first_over_3p5 = -1;
     int max_adc = 0;
     for (int i=0; i<img_histogram.rows; i++){
             float binEntry = img_histogram.at<float>(i, 0);
@@ -416,16 +440,17 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store,
                     std::cout << "binEntry " << i << ": " << binEntry << "; ";
                 }
                 
-                if (i > 1){
+                if (i > 1 && binEntry > 0){
                     mean = CalcMean(pix_counts[i],pix_counts[0].size());
                     sigma = CalcStdDev(pix_counts[i],mean,pix_counts[0].size());
                     //if (pix_counts[0].size() < 5) sigma = sqrt(pow(sigma,2) + pow(5 - pix_counts[0].size(),2)); //Reduce the significance when low stats
                     //std::cout << "Add significance: " << (binEntry-mean)/sigma << "; mean: " << mean << "; sigma: " << sigma << std::endl;
-                    if (binEntry > mean) significance += (binEntry-mean)/sigma;
+                    significance += (binEntry-mean)/sigma;
+                    if (significance < 0) significance = 0;
                     if (debug) std::cout << "significance so far: " << significance << std::endl;
                 }
                 
-                if (significance > 3.5 && i < first_over_3p5) first_over_3p5 = i;
+                if (significance > 3.5 && first_over_3p5 < 0) first_over_3p5 = i;
                 
                 if (i > max_adc) max_adc = i;
                 
