@@ -440,12 +440,12 @@ double AnalyzerUnit::calculateSignificanceFrame(cv::Mat& ImageFrame, bool store,
                     std::cout << "binEntry " << i << ": " << binEntry << "; ";
                 }
                 
-                if (i > 1 && binEntry > 0){
+                if (i > 1){
                     mean = CalcMean(pix_counts[i],pix_counts[0].size());
                     sigma = CalcStdDev(pix_counts[i],mean,pix_counts[0].size());
                     //if (pix_counts[0].size() < 5) sigma = sqrt(pow(sigma,2) + pow(5 - pix_counts[0].size(),2)); //Reduce the significance when low stats
                     //std::cout << "Add significance: " << (binEntry-mean)/sigma << "; mean: " << mean << "; sigma: " << sigma << std::endl;
-                    significance += (binEntry-mean)/sigma;
+                    if (binEntry != mean || sigma > 0) significance += (binEntry-mean)/sigma;   //If statement prevents nan. Using OR because the inf from divide by 0 is desired when not storing bin values
                     if (significance < 0) significance = 0;
                     if (debug) std::cout << "significance so far: " << significance << std::endl;
                 }
