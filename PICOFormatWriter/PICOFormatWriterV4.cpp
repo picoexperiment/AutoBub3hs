@@ -99,7 +99,7 @@ void OutputWriter::writeHeader(void ){
 void OutputWriter::stageCameraOutput(std::vector<bubble*> BubbleRectIn, int camera, int frame0, int event){
 
     int tempStatus;
-    if (BubbleRectIn.size()==0) tempStatus = -1;
+    if (BubbleRectIn.size()==0) tempStatus = -1;    //Error code -1
     else tempStatus = 0;
 
     this->AllBubbleData[camera]->BubbleObjectData = BubbleRectIn;

@@ -4,5 +4,8 @@ DebugPeek
 Makefile
 abub3hs
 cmake_install.cmake
+libAbubEntropySubsystem.so
+libAbubUtility.so
+liblbpuser.so
 *.so
 *.swp

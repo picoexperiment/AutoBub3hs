@@ -21,8 +21,6 @@
 #include <boost/filesystem.hpp>
 
 #define debug false
-#include <chrono>
-using std::chrono::milliseconds;
 
 RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat) : Parser(RunFolder, ImageFolder, ImageFormat){}
 
@@ -30,21 +28,29 @@ RawParser* RawParser::clone(){
     return new RawParser(this->RunFolder, this->ImageFolder, this->ImageFormat);
 }
 
-void RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
-    auto t0 = std::chrono::high_resolution_clock::now();
+
+/* Retrieve an image from the event EventID with frame number FrameName,
+ * and fill the Image argument with the image data.
+ *
+ * Returns:
+ *   0:     success
+ *   <0:    file doesn't exist on disk
+ *   >0:    image data retrieved from zip file, but resulting image is
+ *          empty after interpreting.
+ */
+int RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
     boost::filesystem::path imagePath(this->RunFolder);
     imagePath = imagePath / EventID / this->ImageFolder / FrameName;
 
+    if (!boost::filesystem::exists(imagePath)){ return -1; };
+
     Image = cv::imread(imagePath.native(), 0);
-    //std::cout << imagePath << " " << Image.empty() << std::endl;
-    if (debug){
-        auto t1 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt = t1 - t0;
-        std::cout << "GetImage: " << dt.count() << std::endl;
-    }
+    return Image.empty();
 }
 
+
 RawParser::~RawParser(){};
+
 
 /*Function to Generate File Lists*/
 void RawParser::GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, const char* camera_out_name)

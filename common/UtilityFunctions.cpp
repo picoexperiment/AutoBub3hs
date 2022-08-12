@@ -15,6 +15,10 @@
 #include <sys/stat.h>
 
 
+// Needed for opencv >= 3.0.0
+#if CV_VERSION_MAJOR > 2
+#include "opencv2/highgui/highgui_c.h"
+#endif
 
 
 void debugShow(cv::Mat& frame)

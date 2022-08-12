@@ -30,8 +30,6 @@
 #include "mz_zip_rw.h"
 
 #define debug false
-#include <chrono>
-using std::chrono::milliseconds;
 
 
 /* Constructor */
@@ -101,8 +99,6 @@ ZipParser* ZipParser::clone(){
 
 
 void ZipParser::BuildFileList(){
-    auto t0 = std::chrono::high_resolution_clock::now();
-
     /* Build a vector with the file contents */
     std::string re_str = "^.*/(\\d+)/.*/?(cam\\d.*image\\s*\\d+.*(png|bmp))";
     boost::regex re(re_str);
@@ -131,12 +127,6 @@ void ZipParser::BuildFileList(){
         std::cout << "Error when creating file list; cannot continue." << std::endl;
         throw -10;
     }
-
-    if (debug){
-        auto t1 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt = t1 - t0;
-        std::cout << "BuildFileList: " << dt.count() << std::endl;
-    }
 }
 
 
@@ -153,40 +143,38 @@ int ZipParser::SearchForFile(int start, int end, std::string re_str){
 }
 
 
-/* Return the image as cv::Mat */
-void ZipParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
+/* Retrieve an image from the event EventID with frame number FrameName,
+ * and fill the Image argument with the image data.
+ *
+ * Returns:
+ *   0:     success
+ *   <0:    zip file error
+ *   >0:    image data retrieved from zip file, but resulting image is
+ *          empty after interpreting.
+ */
+int ZipParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
     if (this->FileContents.size()==0) this->BuildFileList();
-    auto t0 = std::chrono::high_resolution_clock::now();
 
     int err = 0;
 
     /* Go to the location of the data in the zip file, get file info. */
     mz_zip_file *file_info;
-    mz_zip_goto_entry(this->zip_handle, this->ImageLocs[EventID][FrameName]);
-    mz_zip_entry_get_info(this->zip_handle, &file_info);
+    err += mz_zip_goto_entry(this->zip_handle, this->ImageLocs[EventID][FrameName]);
+    err += mz_zip_entry_get_info(this->zip_handle, &file_info);
 
-    auto t03 = std::chrono::high_resolution_clock::now();
     /* Store data from file in buffer */
     char buf[file_info->uncompressed_size];
-    mz_zip_entry_read_open(this->zip_handle, 0, NULL);
+    err += mz_zip_entry_read_open(this->zip_handle, 0, NULL);
     mz_zip_entry_read(this->zip_handle, buf, file_info->uncompressed_size);
-    mz_zip_entry_close(this->zip_handle);
+    err += mz_zip_entry_close(this->zip_handle);
 
-    if (debug){
-        auto t13 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt3 = t13 - t03;
-        std::cout << "GetImage->save_to_buffer: " << dt3.count() << std::endl;
-    }
+    if (err) { return err; };
 
     /* Reinterpret buffer as OpenCV Mat object */
     cv::Mat rawData(1, file_info->uncompressed_size, CV_8U, (void*) buf);
     Image = cv::imdecode(rawData, 0);
 
-    if (debug){
-        auto t1 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt = t1 - t0;
-        std::cout << "GetImage: " << dt.count() << std::endl;
-    }
+    return Image.empty();
 }
 
 /*Function to Generate File Lists*/
@@ -198,7 +186,6 @@ void ZipParser::GetFileLists(const char* EventFolder, std::vector<std::string>& 
 /*Function to Generate File Lists*/
 void ZipParser::GetEventDirLists(std::vector<std::string>& EventList){
     if (this->FileContents.size()==0) this->BuildFileList();
-    auto t0 = std::chrono::high_resolution_clock::now();
     /* Regex should match each event folder */
     boost::regex expression("^.*/(\\d+)/$");
     boost::smatch what;
@@ -208,37 +195,11 @@ void ZipParser::GetEventDirLists(std::vector<std::string>& EventList){
             EventList.push_back(what[1].str());
         }
     }
-
-    /*
-    char eventdir_buf[100];
-
-    int ev = 0;
-    */
-    //sprintf(eventdir_buf, "*/%d/", ev);
-    /*
-    mz_zip_reader_set_pattern(this->zip_reader, eventdir_buf, 1);
-
-    while (mz_zip_reader_goto_first_entry(this->zip_reader) == MZ_OK){
-        EventList.push_back(std::to_string(ev));
-
-        ev++;
-    */
-        //sprintf(eventdir_buf, "*/%d/", ev);
-    /*
-        mz_zip_reader_set_pattern(this->zip_reader, eventdir_buf, 1);
-    }
-    */
-    if (debug){
-        auto t1 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt = t1 - t0;
-        std::cout << "GetEventDirLists: " << dt.count() << std::endl;
-    }
 }
 
 /* Retreive the image path names for a specific event */
 void ZipParser::ParseAndSortFramesInFolder(std::string EventID, int camera, std::vector<std::string>& Contents){
     if (this->FileContents.size()==0) this->BuildFileList();
-    auto t0 = std::chrono::high_resolution_clock::now();
 
     std::string re_str = "cam" + std::to_string(camera) + ".*image.*(png|bmp)";
     boost::regex re(re_str);
@@ -247,21 +208,5 @@ void ZipParser::ParseAndSortFramesInFolder(std::string EventID, int camera, std:
         if (boost::regex_match(entry.first, re)) Contents.push_back(entry.first);
     }
 
-//    std::string re_str = ".*/" + EventID + "/.*cam" + std::to_string(camera) + ".*image.*(png|bmp)";
-//    boost::regex re(re_str);
-
-    /* Loop over file contents, and check against the regular expression for matching image files */
-//    for (auto&& entry: this->FileContents){
-//        if (boost::regex_match(entry, re)){
-            /* For simplicity, a filesystem::path object is created to split the file name from the rest of the path */
-//            boost::filesystem::path p(entry);
-//            Contents.push_back(p.filename().native());
-//        }
-//    }
     std::sort(Contents.begin(), Contents.end());
-    if (debug){
-        auto t1 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dt = t1 - t0;
-        std::cout << "ParseAndSortFramesInFolder: " << dt.count() << std::endl;
-    }
 }
