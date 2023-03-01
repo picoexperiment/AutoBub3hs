@@ -214,8 +214,12 @@ void L3Localizer::rem_unique(std::vector<cv::Rect>& L2SearchAreas, std::vector<c
 
 void L3Localizer::CalculateInitialBubbleParams(void )
 {
+    
+    //assume there are just as many frames after frame 50 as before
+    //this is only used for debugging (so far), so shouldn't matter for operation if it's not always correct
+    int frame_num_offset = 50-(this->CameraFrames.size()-1)/2;
 
-    if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+30 << "-----" << std::endl;
+    if (!this->nonStopMode) std::cout << "-----Start ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+frame_num_offset << "-----" << std::endl;
 
     int blur_diam = 5;
 
@@ -442,7 +446,7 @@ void L3Localizer::CalculateInitialBubbleParams(void )
     /*Debug*/
     if (!this->nonStopMode){
       cv::imwrite("DebugPeek/ev" + this->EventID + "_cam" + std::to_string(CameraNumber)+"_4_BubbleDetected.png", this->presentationFrame);
-      std::cout << "-----End ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+30 << "-----" << std::endl;
+      std::cout << "-----End ev " << this->EventID << ", cam " << CameraNumber << ", frame " << this->MatTrigFrame+frame_num_offset << "-----" << std::endl;
     }
 
     //NewFrameDiffTrig.refcount=0;
@@ -971,13 +975,17 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords, bool bellows )
     int ypix = genesis_coords->y+genesis_coords->height/2;
     //This is why cam_masks has to be in the build dir -- this path is relative to the executable.
     cv::Mat mask_image;
-    std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber);
-    if (bellows) path += "_bellows";
-    path += "_mask.bmp";
-    if (bellows && bellows_mask.empty()) this->bellows_mask = cv::imread(path , cv::IMREAD_GRAYSCALE);
-    else if (!bellows && cam_mask.empty()) this->cam_mask = cv::imread(path , cv::IMREAD_GRAYSCALE);
-    if (bellows) mask_image = bellows_mask;
-    else mask_image = cam_mask;
+    
+    if (this->MaskDir != ""){
+        std::string path = this->MaskDir + "/cam" + std::to_string(this->CameraNumber);
+        if (bellows) path += "_bellows";
+        path += "_mask.bmp";
+        if (bellows && bellows_mask.empty()) this->bellows_mask = cv::imread(path , cv::IMREAD_GRAYSCALE);
+        else if (!bellows && cam_mask.empty()) this->cam_mask = cv::imread(path , cv::IMREAD_GRAYSCALE);
+        if (bellows) mask_image = bellows_mask;
+        else mask_image = cam_mask;
+    }
+    else return !bellows;   //Silently skip mask check
     if (mask_image.empty()){
         std::cout << "Mask image not loadable for event " << this->EventID
             << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;

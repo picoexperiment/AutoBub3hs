@@ -54,6 +54,9 @@ class AnalyzerUnit{
         /*Produces the text output for PICO format*/
         void ProduceOutput(void );
         
+        /*Applies a gamma correction to the images*/
+        void gammaCorrection(const cv::Mat &src, cv::Mat &dst, const float gamma);
+        
         /*Perform subtraction and blurring on image before checking for trigger*/
         void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
         void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam, cv::Rect ROI, int img_num  = -1);

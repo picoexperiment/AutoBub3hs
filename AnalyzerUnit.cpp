@@ -125,6 +125,9 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         return;
     }
 
+    //assume there are just as many frames after frame 50 as before
+    //this is only used for debugging (so far), so shouldn't matter for operation if it's not always correct
+    int frame_num_offset = 50-(this->CameraFrames.size()-1)/2;
 
     cv::Mat workingFrame, subtr_frame, prevFrame, prevPrevFrame;
 
@@ -164,12 +167,14 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         pix_counts.resize(256);
         entropies.clear();
     }
+    
+    double gamma = 2.2;
   
     //cv::Mat comparisonFrame = cv::imread(refImg.c_str(),0);
     
-    this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], prevFrame);
+    this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-1], prevFrame);gammaCorrection(prevFrame,prevFrame,gamma);
     if (startframe < 2) prevPrevFrame = prevFrame;
-    else this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-2], prevPrevFrame);
+    else this->FileParser->GetImage(this->EventID, this->CameraFrames[startframe-2], prevPrevFrame);gammaCorrection(prevPrevFrame,prevPrevFrame,gamma);
 
     /*Start by flagging that a bubble wasnt found, flag gets changed to 0 if all goes well*/
     this->TriggerFrameIdentificationStatus=-3;
@@ -199,9 +204,10 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
             return;
         }*/
         //workingFrame = cv::imread(evalImg.c_str(), 0);
-        this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
+        this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);gammaCorrection(workingFrame,workingFrame,gamma);
 
         /*Background Subtract*/
+        
         ProcessFrame(workingFrame,twoFrameOffset?prevPrevFrame:prevFrame,subtr_frame,5,nonStopMode ? -1 : i);    //Compare two frames back to get better sensitivity to slow growing bubbles
         //ProcessFrame(workingFrame,prevFrame,subtr_frame,5,nonStopMode ? -1 : i);   //old way
         //Future task: Could do a comparison with both prev and prevPrev to get even better sensitivity!
@@ -220,7 +226,7 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
         if (!nonStopMode){
           //cv::Mat debug_mask;
           //cv::threshold(subtr_frame, debug_mask, 2, 255, THRESH_BINARY); //Makes the image viewable in standard photo viewer without brightness adjustments
-          std::cout<<"Entropy of BkgSub "<<i+30<<" image: "<<singleEntropy<<"\n";
+          std::cout<<"Entropy of BkgSub "<<i+frame_num_offset<<" image: "<<singleEntropy<<"\n";
           imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i], subtr_frame/*debug_mask*/);
         }
 
@@ -264,10 +270,11 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                 cv::Mat tempPrevPrevFrame = prevFrame;
                 cv::Mat tempPrevFrame = workingFrame;
                 cv::Mat peakFrame, diff_frame;
+                double max_so_far = singleEntropy;
                 if (!nonStopMode) std::cout << "Checking whether trigger condition is met in next few frames." << std::endl;
                 for (int ii = 1; ii <= numFramesCheck && ii+i < this->CameraFrames.size(); ii++){   //This means a trigger cannot occur after frame # 70-numFramesCheck
                 
-                    this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);
+                    this->FileParser->GetImage(this->EventID, this->CameraFrames[i+ii], peakFrame);gammaCorrection(peakFrame,peakFrame,gamma);
 
                     ProcessFrame(peakFrame,twoFrameOffset?tempPrevPrevFrame:tempPrevFrame,diff_frame,5,nonStopMode ? -1 : i+ii);
                     if (!nonStopMode) imwrite(std::string(getenv("HOME"))+"/test/abub_debug/ev_"+EventID+"_"+this->CameraFrames[i+ii], diff_frame);
@@ -279,12 +286,13 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
                     
                     if (!nonStopMode) std::cout << "Frame ahead " << ii << " entropy: " << singleEntropy << std::endl;
 
-                    if (singleEntropy <= entropyThreshold) break;
+                    if (singleEntropy/(entropyThreshold/3.5*5) + singleEntropy/max_so_far <= 3) break;  //Not a trigger
                     else if (ii == numFramesCheck){
                         this->TriggerFrameIdentificationStatus = 0;
                         this->MatTrigFrame = i;
                     }
                     //else: check next frame
+                    if (singleEntropy > max_so_far) max_so_far = singleEntropy;
                     
                     tempPrevPrevFrame = tempPrevFrame;
                     tempPrevFrame = peakFrame;
@@ -306,6 +314,21 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
     }
 
 
+}
+
+//From: https://lindevs.com/apply-gamma-correction-to-an-image-using-opencv/
+void AnalyzerUnit::gammaCorrection(const cv::Mat &src, cv::Mat &dst, const float gamma)
+{
+    return; //DISABLED for now. Still need to test this.
+    float invGamma = 1 / gamma;
+
+    Mat table(1, 256, CV_8U);
+    uchar *p = table.ptr();
+    for (int i = 0; i < 256; ++i) {
+        p[i] = (uchar) (pow(i / 255.0, invGamma) * 255);
+    }
+
+    LUT(src, table, dst);
 }
 
 void AnalyzerUnit::ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& diff_frame, int blur_diam, int img_num){

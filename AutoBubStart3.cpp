@@ -126,16 +126,17 @@ int AnyCamAnalysis(std::string EventID, std::string ImgDir, int camera, bool non
 
 std::string usage(){
     std::string msg(
-                "Usage: abub3hs [-hz] [-D data_series] [-c cam_mask_dir] -d data_dir -r run_ID -o out_dir\n"
+                "Usage: abub3hs [-hzme] [-D data_series] [-c cam_mask_dir] [--debug code] -d data_dir -r run_ID -o out_dir\n"
                 "Run the AutoBub3hs bubble finding algorithm on a PICO run\n\n"
                 "Required arguments:\n"
                 "  -d, --data_dir = Dir\t\tpath to the directory in which the run folder/file is stored\n"
                 "  -r, --run_id = Str\t\trun ID, formatted as YYYYMMDD_*\n"
-                "  -o, --out_dir = Dir\t\tdirectory to write the output file to\n"
-                "  -c, --cam_mask_dir = Dir\tdirectory containing the camera mask images. If not included, the mask check is skipped\n\n"
+                "  -o, --out_dir = Dir\t\tdirectory to write the output file to\n\n"
                 "Optional arguments:\n"
                 "  -h, --help\t\t\tgive this help message\n"
                 "  -z, --zip\t\t\tindicate the run is stored as a zip file; otherwise assumed to be in a directory\n"
+                "  -c, --cam_mask_dir = Dir\tdirectory containing the camera mask images\n"
+                "  -m, --mask_check\t\tuse camera masks in default directory. Not needed if directory specified\n"
                 "  -D, --data_series = Str\tname of the data series, e.g. 40l-19, 30l-16, etc.\n"
                 "  -e, --event = Int\t\tspecify a single event to process. Mostly just useful for debugging and testing\n"
                 "  --debug = Int\t\t\t3 digit int; eg: 101: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug\n"
@@ -149,11 +150,12 @@ int main(int argc, char** argv)
     std::string dataLoc;
     std::string run_number;
     std::string out_dir;
-    std::string mask_dir;
+    std::string mask_dir = "";
     std::string data_series;
     int event_user = -1;
     int debug_mode = 0;
     bool zipped = false;
+    bool mask_check = false;
 
     // generic options
     po::options_description generic("Arguments");
@@ -161,10 +163,11 @@ int main(int argc, char** argv)
         ("help,h", "produce help message")
         ("data_series,D", po::value<std::string>(&data_series)->default_value(""), "data series name, e.g. 30l-16, 40l-19, etc.")
         ("zip,z", po::bool_switch(&zipped), "run is stored as a zip file")
+        ("mask_check,m", po::bool_switch(&mask_check), "use camera masks")
         ("data_dir,d", po::value<std::string>(&dataLoc), "directory in which the run is stored")
         ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
         ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
-        ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")
+        ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")  //May remove this in a future revision
         ("event,e", po::value<int>(&event_user), "specify a single event to process")
         ("debug", po::value<int>(&debug_mode), "debug mode: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug")
     ;
@@ -177,6 +180,7 @@ int main(int argc, char** argv)
     p.add("out_dir", 1);
     p.add("cam_mask_dir", 1);
     */
+
 
     // Parsing arguments
     po::variables_map vm;
@@ -198,6 +202,9 @@ int main(int argc, char** argv)
 
     std::string this_path = argv[0];
     std::string abub_dir = this_path.substr(0,this_path.find_last_of("/")+1);
+    
+    if (mask_check && mask_dir == "") mask_dir = abub_dir + "cam_masks/" + data_series;
+    else if (!mask_check && mask_dir == "") std::cout << "Not performing mask check on this run." << std::endl;
 
     std::string eventDir = dataLoc + "/" + run_number + "/";
     
@@ -223,6 +230,12 @@ int main(int argc, char** argv)
             if (run_number >= "20200713_7"){ numCams = 4; }
             else { numCams = 2; }
             if (run_number < "20200501_1") frameOffset = 20;
+    }
+    else if (data_series=="40l-22"){
+            imageFormat = "cam%d_image%u.png";
+            imageFolder = "/Images/";
+            frameOffset = 30;   //TODO: Make this automatic
+            numCams = 4;
     }
     else {
             imageFormat = "cam%d_image%u.png";
