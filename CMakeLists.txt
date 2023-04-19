@@ -97,8 +97,11 @@ set(HEADERS
    ${CMAKE_CURRENT_SOURCE_DIR}/FrameSorter.hpp
 )
 
+
 add_executable( abub3hs AutoBubStart3.cpp )
 target_include_directories(abub3hs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minizip-ng/)
 target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser
     AbubEntropySubsystem AbubUtility minizip)
+add_custom_command(TARGET abub3hs PRE_BUILD 
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/cam_masks cam_masks DEPENDS cam_masks)
 #target_link_libraries( abub ${OpenCV_LIBS} ${SOURCE} ${HEADERS} )
