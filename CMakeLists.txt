@@ -4,6 +4,7 @@ project( DisplayImage )
 
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
+set(Boost_USE_MULTITHREADED 0)
 find_package( Boost REQUIRED COMPONENTS regex filesystem program_options QUIET )
 execute_process(COMMAND git submodule update --init --recursive
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
