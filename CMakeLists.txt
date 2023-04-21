@@ -3,6 +3,7 @@ project( DisplayImage )
 
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
+set(Boost_USE_MULTITHREADED 0)
 find_package( Boost REQUIRED COMPONENTS regex filesystem program_options QUIET )
 message("Note: You may have to enter your ssh key password several times here.")
 execute_process(COMMAND git submodule update --init --recursive
