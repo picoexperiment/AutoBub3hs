@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 project( DisplayImage )
 
-
 find_package( OpenCV REQUIRED )
 find_package( OpenMP REQUIRED )
 set(Boost_USE_MULTITHREADED 0)
 find_package( Boost REQUIRED COMPONENTS regex filesystem program_options QUIET )
+message("Note: You may have to enter your ssh key password several times here.")
 execute_process(COMMAND git submodule update --init --recursive
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
@@ -29,7 +29,6 @@ find_package(ZLIB QUIET)
 set(CMAKE_MODULE_PATH "cmake_modules")
 #find_package(sqlite3 REQUIRED)
 #MESSAGE( STATUS "Found : ${SQLITE3_LIBRARIES}" )
-
 
 #SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O3 -march=native -m64 ${OpenMP_CXX_FLAGS} -I${OpenCV_INCLUDE_DIRS}/")
 SET(CMAKE_CXX_FLAGS "-std=gnu++1z -O0 -march=native -m64 ${OpenMP_CXX_FLAGS} -I${OpenCV_INCLUDE_DIRS}/ -ggdb")
@@ -99,8 +98,11 @@ set(HEADERS
    ${CMAKE_CURRENT_SOURCE_DIR}/FrameSorter.hpp
 )
 
+
 add_executable( abub3hs AutoBubStart3.cpp )
 target_include_directories(abub3hs PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minizip-ng/)
 target_link_libraries( abub3hs ${OpenCV_LIBS} ${SOURCE} ${HEADERS} lbpuser
-    AbubEntropySubsystem AbubUtility minizip )
+    AbubEntropySubsystem AbubUtility minizip)
+add_custom_command(TARGET abub3hs PRE_BUILD 
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/cam_masks cam_masks DEPENDS cam_masks)
 #target_link_libraries( abub ${OpenCV_LIBS} ${SOURCE} ${HEADERS} )

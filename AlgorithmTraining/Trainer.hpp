@@ -23,6 +23,8 @@ class Trainer{
         int camera;
         std::string EventDir;
         std::string ImageFolder;
+        
+        bool debug;
 
         Parser* FileParser;
 
@@ -42,6 +44,8 @@ class Trainer{
         bool isLBPApplied = false;
 
         int StatusCode;
+        
+        int TrainingSetSize;
 
         /*Directory structure required for the training set*/
         std::vector<std::string> EventList;
@@ -50,7 +54,7 @@ class Trainer{
         std::vector<int> TrainingSequence {0, 1};
 
         /*Trainer instance initilized with the camera number*/
-        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string, Parser* );
+        Trainer(int,  std::vector<std::string>, std::string, std::string, std::string, Parser*, bool debug = false);
         Trainer(const Trainer &other_trainer);
         ~Trainer(void );
 

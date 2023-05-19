@@ -23,10 +23,13 @@ class AnalyzerUnit{
 
 
         /*Training frames and detection frames*/
-        int minEvalFrameNumber = 2;
-        int firstTrainingFrames = 1;
+        int minEvalFrameNumber = 2;     //This skips the images used for training
+        int firstTrainingFrames = 1;    //CR: This doesn't seem to do anything anymore
+        int loc_thres_max = 3;          //PICO-60 default for loc_thres. Increase if getting a lot of false positives
 
-        float calculateEntropyFrame(cv::Mat& );
+        float calculateEntropyFrame(cv::Mat& , bool debug = false);
+        double calculateSignificanceFrame(cv::Mat& ImageFrame, bool store, bool debug = false);
+        double calculateEntropySignificance(cv::Mat& ImageFrame, bool store, bool debug = false);
 
     protected:
         /*Event identification and location*/
@@ -50,13 +53,26 @@ class AnalyzerUnit{
 
         /*Produces the text output for PICO format*/
         void ProduceOutput(void );
+        
+        /*Applies a gamma correction to the images*/
+        void gammaCorrection(const cv::Mat &src, cv::Mat &dst, const float gamma);
+        
+        /*Perform subtraction and blurring on image before checking for trigger*/
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam = 5, int img_num = -1);
+        void ProcessFrame(cv::Mat& workingFrame, cv::Mat& prevFrame, cv::Mat& subtr_frame, int blur_diam, cv::Rect ROI, int img_num  = -1);
 
         /*Variable holding the RotatedRect bubble array and the trigger frame*/
         std::vector<cv::RotatedRect> BubblePixelPos;
         int MatTrigFrame;
+        
+        /*Threshold for localizer*/
+        int loc_thres;
+        
+        std::vector< std::vector<int> > pix_counts;
+        std::vector<double> entropies;
 
         /*Find the trigger frame function*/
-        void FindTriggerFrame(void);
+        void FindTriggerFrame(bool nonStopMode, int startframe);
 
         /*Overloaded function based on the analyzer*/
         virtual void LocalizeOMatic(std::string )=0; //EventList[evi] is being passed. Why?
@@ -74,7 +90,12 @@ class AnalyzerUnit{
 };
 
 /*Helper functions*/
+template <typename num>
+double CalcMean(std::vector<num> &vec, int size = -1);
+template <typename num>
+double CalcStdDev(std::vector<num> &vec, double mean, int size = -1);
 bool frameSortFunc(std::string , std::string );
+void sqrt_mat(cv::Mat& M);
 
 
 #endif // ANALYZERUNIT_HPP_INCLUDED
