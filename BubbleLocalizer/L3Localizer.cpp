@@ -987,8 +987,13 @@ bool L3Localizer::isInMask( cv::Rect *genesis_coords, bool bellows )
     }
     else return !bellows;   //Silently skip mask check
     if (mask_image.empty()){
-        std::cout << "Mask image not loadable for event " << this->EventID
-            << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
+        if (!bellows){
+            std::cout << "Mask image not loadable for event " << this->EventID
+                << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
+        } else {
+            std::cout << "Bellows mask image not loadable for event " << this->EventID
+                << " camera " << this->CameraNumber << "; skipping mask check" << std::endl;
+        }
         if (!bellows) return true;
         else return false;
     }
