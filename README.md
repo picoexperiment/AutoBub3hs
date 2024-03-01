@@ -32,6 +32,14 @@ module load gcc boost opencv
 
 If you attempt to install this on a system other than Graham you will need to install those software packages and make them available to all software before you build. 
 
+You can also run the provided script designed to setup your environment:
+
+```
+source Environment-Graham.sh
+```
+
+It accomplishes the same thing on Graham.
+
 ### Compile using CMake
 
 The preferred way to build the software using the CMake build system is to first create a folder in the top-level project directory:
