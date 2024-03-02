@@ -104,7 +104,6 @@ AutoBub minimally expects to be given the location of a folder containing raw da
 
 
 ```
-mkdir test # make the folder where output will be written
 build$ ./abub3hs -d /project/rrg-kenclark/pico/40l-22-data/ -r 20240131_0 -o test/ -D 40l-22 -z
 ```
 
@@ -175,12 +174,17 @@ Some highlights from the data:
 If you want to assess the performance of AutoBub on data you might need more information. This is obtained by running in debug mode. For example:
 
 ```
-mkdir DebugPeek/ # This is where debugging output is written
-mkdir $HOME/test/abub_debug/ # Needed also for debugging
 build$ ./abub3hs -d /project/rrg-kenclark/pico/40l-22-data/ -r 20240131_0 -o test/ -D 40l-22 -z --debug=101
 ```
 
-The error codes in the recon file are as follows:
+Debugging output will be written to two directories, which are created if they don't already exist:
+
+```
+DebugPeek/
+${HOME}/test/abub_debug/
+```
+
+You might want to redirect the output of the AutoBub command to a log file, since it will print a lot of debugging information in this mode. The error codes in the recon file are as follows:
 
 ```
 -1: Entropy did trigger but no bubble was found  

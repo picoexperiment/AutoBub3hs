@@ -21,6 +21,9 @@
 #include <assert.h>
 #include <stdlib.h>     /* exit, EXIT_FAILURE */
 #include <stdexcept>
+#include <filesystem>
+namespace fs = std::filesystem;
+
 
 /*Geyser Image Analysis Stuff*/
 #include "ParseFolder/ParseFolder.hpp"
@@ -166,7 +169,7 @@ int main(int argc, char** argv)
         ("mask_check,m", po::bool_switch(&mask_check), "use camera masks")
         ("data_dir,d", po::value<std::string>(&dataLoc), "directory in which the run is stored")
         ("run_num,r", po::value<std::string>(&run_number), "run ID, formatted as YYYYMMDD_")
-        ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to")
+        ("out_dir,o", po::value<std::string>(&out_dir), "directory to write the output file to (will be created automatically if needed)")
         ("cam_mask_dir,c", po::value<std::string>(&mask_dir), "directory containing the camera mask pictures")  //May remove this in a future revision
         ("event,e", po::value<int>(&event_user), "specify a single event to process")
         ("debug", po::value<int>(&debug_mode), "debug mode: first digit = localizer debug; second digit = multithread off; third digit = analyzer debug")
@@ -209,6 +212,31 @@ int main(int argc, char** argv)
     std::string eventDir = dataLoc + "/" + run_number + "/";
     
     if (out_dir[out_dir.length()-1] != '/') out_dir += "/";
+
+    /*
+     * Create the output directory, if it does not exist. 
+     */
+
+    if (false == fs::exists(out_dir)) {
+        std::cout << "Creating the output directory, " << out_dir << std::endl;
+        fs::create_directories(out_dir);
+    }
+
+    /*
+        Create any directories that might be needed for debugging
+    */
+    if (debug_mode != 0) {
+        std::vector<std::string> directories;
+        directories.push_back("DebugPeek/");
+        directories.push_back(std::string(getenv("HOME"))+"/test/abub_debug/");
+        for (auto directory : directories) {
+            if (false == fs::exists(directory)) {
+                std::cout << "Creating the debugging directory, " << directory << std::endl;
+                fs::create_directories(directory);
+            }
+        }
+    }
+
 
     /* The following variables deal with the different ways that images have been
      * saved in different experiments.
