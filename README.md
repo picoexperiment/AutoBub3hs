@@ -20,6 +20,13 @@ The usual means to create a personal clone of the software is to use the `git` e
 git clone https://github.com/picoexperiment/AutoBub3hs.git  
 ```
 
+The project depends on at least one _submodule_, which is a third-party piece of software that can be checked out from its own git repository using git commands. This is accomplished the first time you clone AutoBub as follows:
+
+```
+git submodule init
+git submodule update
+```
+
 You must then compile the software. The following example will work on the Graham computing cluster from AllianceCanada, which is the primary distributed computing platform used by the PICO Collaboration. After logging into Graham and cloning the software, you would do the following from the top-level project folder.
 
 ### Load the Environment
