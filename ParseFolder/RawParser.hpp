@@ -19,6 +19,8 @@ class RawParser: public Parser {
         void GetFileLists(const char*, std::vector<std::string>&, const char*) override;
         void ParseAndSortFramesInFolder(std::string, int, std::vector<std::string>&) override;
 
+        void GetRunFileInfo(std::vector<std::string>&) override;
+
 };
 
 #endif

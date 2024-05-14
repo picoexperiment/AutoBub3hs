@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <vector>
+#include <fstream>
 #include <string.h>
 #include <sys/types.h> //.... added
 #include <sys/stat.h>  //....
@@ -21,6 +22,8 @@
 #include <boost/filesystem.hpp>
 
 #define debug false
+#include <chrono>
+using std::chrono::milliseconds;
 
 RawParser::RawParser(std::string RunFolder, std::string ImageFolder, std::string ImageFormat) : Parser(RunFolder, ImageFolder, ImageFormat){}
 
@@ -28,29 +31,22 @@ RawParser* RawParser::clone(){
     return new RawParser(this->RunFolder, this->ImageFolder, this->ImageFormat);
 }
 
-
-/* Retrieve an image from the event EventID with frame number FrameName,
- * and fill the Image argument with the image data.
- *
- * Returns:
- *   0:     success
- *   <0:    file doesn't exist on disk
- *   >0:    image data retrieved from zip file, but resulting image is
- *          empty after interpreting.
- */
 int RawParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Image){
+    auto t0 = std::chrono::high_resolution_clock::now();
     boost::filesystem::path imagePath(this->RunFolder);
     imagePath = imagePath / EventID / this->ImageFolder / FrameName;
 
-    if (!boost::filesystem::exists(imagePath)){ return -1; };
-
     Image = cv::imread(imagePath.native(), 0);
-    return Image.empty();
+    //std::cout << imagePath << " " << Image.empty() << std::endl;
+    if (debug){
+        auto t1 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> dt = t1 - t0;
+        std::cout << "GetImage: " << dt.count() << std::endl;
+    }
+    return !Image.empty();
 }
 
-
 RawParser::~RawParser(){};
-
 
 /*Function to Generate File Lists*/
 void RawParser::GetFileLists(const char* EventFolder, std::vector<std::string>& FileList, const char* camera_out_name)
@@ -157,5 +153,23 @@ void RawParser::ParseAndSortFramesInFolder(std::string EventID, int Camera, std:
             }
         }
         std::sort(Contents.begin(), Contents.end());
+    }
+}
+
+
+void RawParser::GetRunFileInfo(std::vector<std::string>& EventListFromFile){
+    // Find the run number
+    boost::filesystem::path runFolderPath = this->RunFolder;
+    runFolderPath += "/";  // This ensures the last character is a slash, required for the next part
+    std::string runID = runFolderPath.parent_path().filename().string();
+
+    boost::filesystem::path runFilePath = (runFolderPath / runID).string() + ".txt";
+    std::ifstream ifs(runFilePath.c_str());
+
+    // Extract actual event numbers from run file
+    std::string _;
+    int eventNum;
+    while (ifs >> _ >> eventNum >> _ >> _ >> _ >> _ >> _ >> _ >> _ >> _ >> _){
+        EventListFromFile.push_back(std::to_string(eventNum));
     }
 }

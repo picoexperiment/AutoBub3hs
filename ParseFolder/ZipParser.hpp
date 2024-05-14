@@ -28,6 +28,9 @@ class ZipParser: public Parser {
         void *split_stream;
         void *zip_handle;
 
+        std::string runID;
+        int64_t runFileLoc;
+
     protected:
 
     public:
@@ -50,6 +53,8 @@ class ZipParser: public Parser {
          */
         std::map<std::string, std::map<std::string, std::string> > ImageNames;
         std::map<std::string, std::map<std::string, int64_t> > ImageLocs;
+
+        void GetRunFileInfo(std::vector<std::string>&);
 };
 
 #endif

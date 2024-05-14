@@ -27,6 +27,10 @@ class Parser{
         virtual void GetFileLists(const char*, std::vector<std::string>&, const char*) = 0;
         virtual void ParseAndSortFramesInFolder(std::string, int, std::vector<std::string>&) = 0;
 
+        // For verification
+        virtual void GetRunFileInfo(std::vector<std::string>&) = 0;
+        void VerifyEventList(std::vector<std::string>&);
+
 };
 
 #endif
