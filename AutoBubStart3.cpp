@@ -269,7 +269,7 @@ int main(int argc, char** argv)
         //GetEventDirLists(eventDir.c_str(), EventList, EVstatuscode);
         //if (EVstatuscode != 0) throw "Failed to read directory";
         FileParser->GetEventDirLists(EventList);
-        FileParser->VerifyEventList(EventList);
+        //FileParser->VerifyEventList(EventList);
     /*Crash handler at the begining of the program - writes -5 if the folder could not be read*/
     }
     catch (...)
