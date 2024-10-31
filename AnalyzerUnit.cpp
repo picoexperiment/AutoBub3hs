@@ -204,7 +204,14 @@ void AnalyzerUnit::FindTriggerFrame(bool nonStopMode, int startframe){
             return;
         }*/
         //workingFrame = cv::imread(evalImg.c_str(), 0);
-        this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);gammaCorrection(workingFrame,workingFrame,gamma);
+        int err = this->FileParser->GetImage(this->EventID, this->CameraFrames[i], workingFrame);
+        if(err == -1) {
+            std::cout << "Image " << this->CameraFrames[i] << " is corrupted/empty of camera " << this->CameraNumber << " for the event " << this->EventID << "." << std::endl;
+            this->okToProceed=false;
+            this->TriggerFrameIdentificationStatus = -9;
+            return;
+        }
+        gammaCorrection(workingFrame,workingFrame,gamma);
 
         /*Background Subtract*/
         

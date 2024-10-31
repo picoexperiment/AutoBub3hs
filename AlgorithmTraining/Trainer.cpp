@@ -257,11 +257,16 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
                 //tempImagingProcess = cv::imread(thisEventLocation, 0);
                 // REPLACE THIS CODE LATER - once Parser->GetImage has error codes
-                this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
-
-                TestingForEntropyArray.push_back(tempImagingProcess);
-                isThisAGoodEvent = true;
-                /* if error with GetImage - return -7 */
+                int err = this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
+                if(err != -1) {
+                    TestingForEntropyArray.push_back(tempImagingProcess);
+                    isThisAGoodEvent = true;
+                    /* if error with GetImage - return -7 */
+                }
+                else {
+                    std::cout << "Skipping corrupted image for training.\n";
+                    isThisAGoodEvent = false;
+                }
             }
         } else {
             std::cout<<"Event "<<EventList[i]<<" is nonexistant on the disk. Skipping training on this event\n";
