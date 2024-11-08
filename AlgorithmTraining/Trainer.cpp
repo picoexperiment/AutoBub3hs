@@ -252,6 +252,7 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
 
         /*The for block loads images 0 and 1 from each event*/
         if (this->CameraFrames.size() > 0 ){
+	    isThisAGoodEvent = true;
             for (std::vector<int>::iterator it = TrainingSequence.begin(); it !=TrainingSequence.end(); it++){
                 thisEventLocation = ThisEventDir + this->CameraFrames[*it];
 
@@ -260,7 +261,6 @@ void Trainer::MakeAvgSigmaImage(bool PerformLBPOnImages=false)
                 int err = this->FileParser->GetImage(EventList[i], this->CameraFrames[*it], tempImagingProcess);
                 if(err != -1) {
                     TestingForEntropyArray.push_back(tempImagingProcess);
-                    isThisAGoodEvent = true;
                     /* if error with GetImage - return -7 */
                 }
                 else {
