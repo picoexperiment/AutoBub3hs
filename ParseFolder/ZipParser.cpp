@@ -221,6 +221,12 @@ int ZipParser::GetImage(std::string EventID, std::string FrameName, cv::Mat &Ima
     cv::Mat rawData(1, file_info->uncompressed_size, CV_8U, (void*) buf);
     Image = cv::imdecode(rawData, 0);
 
+    // Check if the image is empty after decoding
+    if (Image.empty()) {
+        std::cerr << "Failed to decode image " << FrameName << std::endl;
+        return -1;
+    }
+
     if (debug){
         auto t1 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dt = t1 - t0;
